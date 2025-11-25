@@ -1,0 +1,797 @@
+// PD-OS Database Schema
+// Personal Development Operating System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================
+// CORE / SHARED TABLES
+// ===========================================
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String
+  timezone  String   @default("Asia/Jakarta")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  projects              Project[]
+  goals                 Goal[]
+  tags                  Tag[]
+  dailyLogs             DailyLog[]
+  ieltsSessions         IeltsSession[]
+  ieltsVocab            IeltsVocab[]
+  journalEntries        JournalEntry[]
+  books                 Book[]
+  bookReadingSessions   BookReadingSession[]
+  skillSessions         SkillSession[]
+  workoutSessions       WorkoutSession[]
+  wellnessEntries       WellnessEntry[]
+  financialTransactions FinancialTransaction[]
+  reflectionEntries     ReflectionEntry[]
+  careerActivities      CareerActivity[]
+  jobApplications       JobApplication[]
+  mastersPrepItems      MastersPrepItem[]
+  mastersPrepSessions   MastersPrepSession[]
+
+  @@map("users")
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  userId      String        @map("user_id")
+  name        String
+  description String?       @db.Text
+  type        ProjectType   @default(personal)
+  status      ProjectStatus @default(active)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goals            Goal[]
+  skillSessions    SkillSession[]
+  careerActivities CareerActivity[]
+
+  @@map("projects")
+}
+
+enum ProjectType {
+  personal
+  career
+  academic
+  health
+  finance
+  other
+}
+
+enum ProjectStatus {
+  active
+  paused
+  completed
+  archived
+}
+
+model Goal {
+  id          String       @id @default(uuid())
+  userId      String       @map("user_id")
+  projectId   String?      @map("project_id")
+  title       String
+  description String?      @db.Text
+  category    GoalCategory
+  targetValue Float?       @map("target_value")
+  unit        String?
+  dueDate     DateTime?    @map("due_date") @db.Date
+  status      GoalStatus   @default(not_started)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project          Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  mastersPrepItems MastersPrepItem[]
+
+  @@map("goals")
+}
+
+enum GoalCategory {
+  fitness
+  finance
+  learning
+  career
+  masters
+  wellness
+  skill
+  other
+}
+
+enum GoalStatus {
+  not_started
+  in_progress
+  achieved
+  dropped
+}
+
+model Tag {
+  id      String  @id @default(uuid())
+  userId  String  @map("user_id")
+  label   String
+  color   String?
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tagLinks TagLink[]
+
+  @@unique([userId, label])
+  @@map("tags")
+}
+
+model TagLink {
+  id         String @id @default(uuid())
+  tagId      String @map("tag_id")
+  entityType String @map("entity_type")
+  entityId   String @map("entity_id")
+
+  // Relations
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([tagId, entityType, entityId])
+  @@index([entityType, entityId])
+  @@map("tag_links")
+}
+
+// ===========================================
+// 1. DAILY EVALUATION MODULE
+// ===========================================
+
+model DailyLog {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  date           DateTime @db.Date
+  mainFocus      String?  @map("main_focus") @db.Text
+  workHours      Float?   @map("work_hours")
+  learningHours  Float?   @map("learning_hours")
+  workoutMinutes Int?     @map("workout_minutes")
+  moneySpent     Float?   @map("money_spent")
+  moodScore      Int?     @map("mood_score") // 1-5
+  energyScore    Int?     @map("energy_score") // 1-5
+  sleepHours     Float?   @map("sleep_hours")
+  steps          Int?
+  dayScore       Int?     @map("day_score") // 1-10
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("daily_logs")
+}
+
+// ===========================================
+// 2. IELTS MODULE
+// ===========================================
+
+model IeltsSession {
+  id              String         @id @default(uuid())
+  userId          String         @map("user_id")
+  date            DateTime       @db.Date
+  skillType       IeltsSkillType @map("skill_type")
+  subSkill        String?        @map("sub_skill")
+  materialName    String?        @map("material_name")
+  timeSpentMin    Int?           @map("time_spent_min")
+  rawScore        Float?         @map("raw_score")
+  rawMaxScore     Float?         @map("raw_max_score")
+  estimatedBand   Float?         @map("estimated_band")
+  mistakesSummary String?        @map("mistakes_summary") @db.Text
+  newVocabCount   Int?           @map("new_vocab_count")
+  confidenceScore Int?           @map("confidence_score") // 1-5
+  notes           String?        @db.Text
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mistakes IeltsMistake[]
+  vocab    IeltsVocab[]
+
+  @@map("ielts_sessions")
+}
+
+enum IeltsSkillType {
+  listening
+  reading
+  writing_task1
+  writing_task2
+  speaking
+}
+
+model IeltsMistake {
+  id             String              @id @default(uuid())
+  ieltsSessionId String              @map("ielts_session_id")
+  category       IeltsMistakeCategory
+  description    String              @db.Text
+  example        String?             @db.Text
+
+  // Relations
+  ieltsSession IeltsSession @relation(fields: [ieltsSessionId], references: [id], onDelete: Cascade)
+
+  @@map("ielts_mistakes")
+}
+
+enum IeltsMistakeCategory {
+  grammar
+  vocab
+  spelling
+  paraphrasing
+  logic
+  pronunciation
+  timing
+  comprehension
+  other
+}
+
+model IeltsVocab {
+  id             String          @id @default(uuid())
+  userId         String          @map("user_id")
+  ieltsSessionId String?         @map("ielts_session_id")
+  phrase         String
+  meaning        String          @db.Text
+  exampleUsage   String?         @map("example_usage") @db.Text
+  sourceType     VocabSourceType @default(ielts) @map("source_type")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  // Relations
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ieltsSession IeltsSession? @relation(fields: [ieltsSessionId], references: [id], onDelete: SetNull)
+
+  @@map("ielts_vocab")
+}
+
+enum VocabSourceType {
+  ielts
+  book
+  journal
+  other
+}
+
+// ===========================================
+// 3. JOURNAL / RESEARCH READING MODULE
+// ===========================================
+
+model JournalEntry {
+  id               String              @id @default(uuid())
+  userId           String              @map("user_id")
+  date             DateTime            @db.Date
+  title            String
+  authors          String?
+  source           String?
+  category         JournalCategory     @default(other)
+  contentType      JournalContentType  @default(original) @map("content_type")
+  timeSpentMin     Int?                @map("time_spent_min")
+  summary          String?             @db.Text
+  keyInsights      String?             @map("key_insights") @db.Text
+  keyDataPoints    String?             @map("key_data_points") @db.Text
+  methodsSummary   String?             @map("methods_summary") @db.Text
+  modelsEquations  String?             @map("models_equations") @db.Text
+  limitations      String?             @db.Text
+  openQuestion     String?             @map("open_question") @db.Text
+  projectRelevance String?             @map("project_relevance") @db.Text
+  confidenceScore  Int?                @map("confidence_score") // 1-5
+  ratingUsefulness Int?                @map("rating_usefulness") // 1-5
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("journal_entries")
+}
+
+enum JournalCategory {
+  microalgae
+  co2_fixation
+  bioprocess
+  sustainability
+  engineering
+  data_science
+  other
+}
+
+enum JournalContentType {
+  review
+  original
+  thesis
+  book_chapter
+  report
+  conference
+  other
+}
+
+// ===========================================
+// 4. BOOK READING MODULE
+// ===========================================
+
+model Book {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  title      String
+  author     String?
+  totalPages Int?     @map("total_pages")
+  genre      String?
+  language   String?  @default("English")
+  status     BookStatus @default(reading)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readingSessions BookReadingSession[]
+
+  @@map("books")
+}
+
+enum BookStatus {
+  to_read
+  reading
+  completed
+  dropped
+}
+
+model BookReadingSession {
+  id            String             @id @default(uuid())
+  userId        String             @map("user_id")
+  bookId        String             @map("book_id")
+  date          DateTime           @db.Date
+  chapterLabel  String?            @map("chapter_label")
+  pagesStart    Int?               @map("pages_start")
+  pagesEnd      Int?               @map("pages_end")
+  pagesRead     Int?               @map("pages_read")
+  timeSpentMin  Int?               @map("time_spent_min")
+  readingSpeed  Float?             @map("reading_speed") // pages per hour
+  summary       String?            @db.Text
+  keyIdeas      String?            @map("key_ideas") @db.Text
+  favoriteLines String?            @map("favorite_lines") @db.Text
+  newVocab      String?            @map("new_vocab") @db.Text
+  emotionScore  Int?               @map("emotion_score") // 1-5
+  emotionLabel  String?            @map("emotion_label")
+  purpose       BookReadingPurpose @default(knowledge)
+  focusScore    Int?               @map("focus_score") // 1-5
+  notes         String?            @db.Text
+  createdAt     DateTime           @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@map("book_reading_sessions")
+}
+
+enum BookReadingPurpose {
+  language
+  leisure
+  inspiration
+  knowledge
+  rest
+  other
+}
+
+// ===========================================
+// 5. SKILL BUILDING MODULE
+// ===========================================
+
+model SkillSession {
+  id            String        @id @default(uuid())
+  userId        String        @map("user_id")
+  date          DateTime      @db.Date
+  skillCategory SkillCategory @map("skill_category")
+  subSkill      String?       @map("sub_skill")
+  projectId     String?       @map("project_id")
+  timeSpentMin  Int?          @map("time_spent_min")
+  outputSummary String?       @map("output_summary") @db.Text
+  outputLink    String?       @map("output_link")
+  learnedPoints String?       @map("learned_points") @db.Text
+  difficulty    Int?          // 1-5
+  masteryLevel  Int?          @map("mastery_level") // 1-5
+  mistakes      String?       @db.Text
+  nextStep      String?       @map("next_step") @db.Text
+  energyScore   Int?          @map("energy_score") // 1-5
+  qualityScore  Int?          @map("quality_score") // 1-5
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@map("skill_sessions")
+}
+
+enum SkillCategory {
+  uiux
+  framer
+  writing
+  pm
+  data
+  engineering
+  programming
+  career
+  language
+  other
+}
+
+// ===========================================
+// 6. WORKOUT MODULE
+// ===========================================
+
+model WorkoutSession {
+  id             String       @id @default(uuid())
+  userId         String       @map("user_id")
+  date           DateTime     @db.Date
+  workoutType    WorkoutType  @map("workout_type")
+  routineName    String?      @map("routine_name")
+  durationMin    Int?         @map("duration_min")
+  distanceKm     Float?       @map("distance_km")
+  paceMinPerKm   Float?       @map("pace_min_per_km")
+  steps          Int?
+  avgHeartRate   Int?         @map("avg_heart_rate")
+  calories       Int?
+  intensityLevel Int?         @map("intensity_level") // 1-5
+  focus          WorkoutFocus @default(endurance)
+  preEnergy      Int?         @map("pre_energy") // 1-5
+  postMood       String?      @map("post_mood")
+  workoutQuality Int?         @map("workout_quality") // 1-5
+  notes          String?      @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  // Relations
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sets WorkoutSet[]
+
+  @@map("workout_sessions")
+}
+
+enum WorkoutType {
+  jogging
+  walking
+  strength
+  hiit
+  swimming
+  cycling
+  stretching
+  yoga
+  sports
+  other
+}
+
+enum WorkoutFocus {
+  endurance
+  fat_burn
+  strength
+  core
+  mobility
+  recovery
+  cardio
+  other
+}
+
+model WorkoutSet {
+  id               String  @id @default(uuid())
+  workoutSessionId String  @map("workout_session_id")
+  exerciseName     String  @map("exercise_name")
+  setNumber        Int     @map("set_number")
+  reps             Int?
+  weightKg         Float?  @map("weight_kg")
+  notes            String? @db.Text
+
+  // Relations
+  workoutSession WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
+
+  @@map("workout_sets")
+}
+
+// ===========================================
+// 7. WELLNESS MODULE
+// ===========================================
+
+model WellnessEntry {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  date             DateTime @db.Date
+  sleepHours       Float?   @map("sleep_hours")
+  sleepQuality     Int?     @map("sleep_quality") // 1-5
+  energyLevel      Int?     @map("energy_level") // 1-5
+  appetiteControl  Int?     @map("appetite_control") // 1-5
+  hydrationLiters  Float?   @map("hydration_liters")
+  physicalSymptoms String?  @map("physical_symptoms") @db.Text
+  sunlightMinutes  Int?     @map("sunlight_minutes")
+  moodScore        Int?     @map("mood_score") // 1-5
+  stressLevel      Int?     @map("stress_level") // 1-5
+  mentalClarity    Int?     @map("mental_clarity") // 1-5
+  anxietyLevel     Int?     @map("anxiety_level") // 1-5
+  screenTimeMin    Int?     @map("screen_time_min")
+  socialTimeMin    Int?     @map("social_time_min")
+  outdoorTimeMin   Int?     @map("outdoor_time_min")
+  hygieneScore     Int?     @map("hygiene_score") // 1-5
+  dietDiscipline   Int?     @map("diet_discipline") // 1-5
+  noLateSnacks     Boolean? @map("no_late_snacks")
+  morningRoutine   Boolean? @map("morning_routine")
+  eveningRoutine   Boolean? @map("evening_routine")
+  wellnessNote     String?  @map("wellness_note") @db.Text
+  wellnessScore    Float?   @map("wellness_score") // computed composite
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("wellness_entries")
+}
+
+// ===========================================
+// 8. FINANCIAL MODULE
+// ===========================================
+
+model FinancialTransaction {
+  id             String                @id @default(uuid())
+  userId         String                @map("user_id")
+  date           DateTime              @db.Date
+  amountIdr      Float                 @map("amount_idr")
+  direction      FinancialDirection
+  category       FinancialCategory
+  isNecessary    Boolean?              @map("is_necessary")
+  paymentMethod  PaymentMethod?        @map("payment_method")
+  investmentType InvestmentType?       @map("investment_type")
+  description    String?               @db.Text
+  notes          String?               @db.Text
+  createdAt      DateTime              @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("financial_transactions")
+}
+
+enum FinancialDirection {
+  spend
+  invest
+  income
+}
+
+enum FinancialCategory {
+  food
+  transport
+  groceries
+  household
+  entertainment
+  health
+  phone
+  internet
+  subscription
+  family_support
+  work
+  education
+  savings
+  investment
+  salary
+  freelance
+  other
+}
+
+enum PaymentMethod {
+  cash
+  debit
+  e_wallet
+  credit
+  transfer
+}
+
+enum InvestmentType {
+  bitcoin
+  savings
+  emergency_fund
+  stocks
+  mutual_funds
+  business
+  gold
+  other
+}
+
+// ===========================================
+// 9. REFLECTION MODULE
+// ===========================================
+
+model ReflectionEntry {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  date            DateTime @db.Date
+  wentWell        String?  @map("went_well") @db.Text
+  wentWrong       String?  @map("went_wrong") @db.Text
+  rootCause       String?  @map("root_cause") @db.Text
+  learnedToday    String?  @map("learned_today") @db.Text
+  fixForTomorrow  String?  @map("fix_for_tomorrow") @db.Text
+  integrityScore  Int?     @map("integrity_score") // 1-5
+  disciplineScore Int?     @map("discipline_score") // 1-5
+  emotionalState  String?  @map("emotional_state")
+  gratitude       String?  @db.Text
+  dayLesson       String?  @map("day_lesson") @db.Text
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("reflection_entries")
+}
+
+// ===========================================
+// 10. CAREER MODULE
+// ===========================================
+
+model CareerActivity {
+  id            String               @id @default(uuid())
+  userId        String               @map("user_id")
+  date          DateTime             @db.Date
+  activityType  CareerActivityType   @map("activity_type")
+  subcategory   String?
+  targetEntity  String?              @map("target_entity")
+  projectId     String?              @map("project_id")
+  timeSpentMin  Int?                 @map("time_spent_min")
+  description   String?              @db.Text
+  outputSummary String?              @map("output_summary") @db.Text
+  outputLink    String?              @map("output_link")
+  pipelineStage CareerPipelineStage? @map("pipeline_stage")
+  priority      Int?                 // 1-3
+  confidence    Int?                 // 1-5
+  careerImpact  Int?                 @map("career_impact") // 1-5
+  nextStep      String?              @map("next_step") @db.Text
+  notes         String?              @db.Text
+  createdAt     DateTime             @default(now()) @map("created_at")
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@map("career_activities")
+}
+
+enum CareerActivityType {
+  job_application
+  portfolio
+  cv
+  cover_letter
+  networking
+  linkedin_post
+  learning
+  interview_prep
+  company_research
+  strategy
+  certification
+  other
+}
+
+enum CareerPipelineStage {
+  not_applicable
+  not_started
+  in_progress
+  submitted
+  interview
+  follow_up
+  waiting
+  completed
+  rejected
+}
+
+model JobApplication {
+  id               String               @id @default(uuid())
+  userId           String               @map("user_id")
+  company          String
+  roleTitle        String               @map("role_title")
+  link             String?
+  status           JobApplicationStatus @default(draft)
+  contactName      String?              @map("contact_name")
+  contactEmail     String?              @map("contact_email")
+  appliedDate      DateTime?            @map("applied_date") @db.Date
+  expectedResponse DateTime?            @map("expected_response") @db.Date
+  salary           String?
+  location         String?
+  notes            String?              @db.Text
+  createdAt        DateTime             @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("job_applications")
+}
+
+enum JobApplicationStatus {
+  draft
+  applied
+  screening
+  interview
+  offer
+  rejected
+  withdrawn
+  accepted
+}
+
+// ===========================================
+// 11. MASTER'S DEGREE PREPARATION MODULE
+// ===========================================
+
+model MastersPrepItem {
+  id              String             @id @default(uuid())
+  userId          String             @map("user_id")
+  category        MastersPrepCategory
+  subcategory     String?
+  taskTitle       String             @map("task_title")
+  description     String?            @db.Text
+  relatedGoalId   String?            @map("related_goal_id")
+  priority        Int?               // 1-3
+  status          MastersPrepStatus  @default(not_started)
+  progressPercent Int?               @default(0) @map("progress_percent")
+  timeSpentMin    Int?               @map("time_spent_min")
+  outputSummary   String?            @map("output_summary") @db.Text
+  outputLink      String?            @map("output_link")
+  readinessScore  Int?               @map("readiness_score") // 1-5
+  nextStep        String?            @map("next_step") @db.Text
+  notes           String?            @db.Text
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedGoal Goal?                 @relation(fields: [relatedGoalId], references: [id], onDelete: SetNull)
+  sessions    MastersPrepSession[]
+
+  @@map("masters_prep_items")
+}
+
+enum MastersPrepCategory {
+  ielts
+  journal
+  research_skills
+  technical
+  writing
+  portfolio
+  project_experience
+  cv_docs
+  recommendations
+  financial
+  strategy
+  university_research
+  other
+}
+
+enum MastersPrepStatus {
+  not_started
+  in_progress
+  halfway
+  almost_done
+  completed
+}
+
+model MastersPrepSession {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  prepItemId   String   @map("prep_item_id")
+  date         DateTime @db.Date
+  timeSpentMin Int?     @map("time_spent_min")
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prepItem MastersPrepItem @relation(fields: [prepItemId], references: [id], onDelete: Cascade)
+
+  @@map("masters_prep_sessions")
+}

@@ -1,0 +1,349 @@
+@import "tailwindcss";
+
+/* =================================================================
+   PD-OS Design System - CSS Custom Properties
+   ================================================================= */
+
+/* Base radius for consistent border-radius across the app */
+:root {
+  --radius: 0.625rem; /* 10px */
+}
+
+/* Radius scale derived from base radius */
+@theme inline {
+  /* Typography */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Colors - Light Mode (default) */
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: oklch(0.141 0.005 285.823);
+
+  /* Background levels for progressive depth */
+  --color-background-50: hsl(210 15% 98%);
+  --color-background-100: hsl(210 15% 95%);
+  --color-background-200: hsl(210 15% 92%);
+  --color-background-300: hsl(210 15% 88%);
+
+  /* Card */
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: oklch(0.141 0.005 285.823);
+
+  /* Popover */
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: oklch(0.141 0.005 285.823);
+
+  /* Primary - Main brand color */
+  --color-primary: oklch(0.21 0.006 285.885);
+  --color-primary-foreground: oklch(0.985 0 0);
+
+  /* Secondary */
+  --color-secondary: hsl(210 20% 96%);
+  --color-secondary-foreground: oklch(0.21 0.006 285.885);
+
+  /* Muted - Subtle backgrounds */
+  --color-muted: hsl(210 20% 96%);
+  --color-muted-foreground: oklch(0.556 0.016 285.938);
+
+  /* Accent - Hover states */
+  --color-accent: hsl(210 20% 96%);
+  --color-accent-foreground: oklch(0.21 0.006 285.885);
+
+  /* Destructive - Errors */
+  --color-destructive: oklch(0.577 0.245 27.325);
+  --color-destructive-foreground: hsl(0 0% 100%);
+
+  /* Border */
+  --color-border: oklch(0.3039 0.04 213.68 / 0.075);
+  --color-border-secondary: hsl(214 32% 96%);
+
+  /* Input & Ring */
+  --color-input: oklch(0.3039 0.04 213.68 / 0.075);
+  --color-ring: oklch(0.705 0.015 286.067);
+
+  /* Chart colors for data visualization */
+  --color-chart-1: oklch(0.646 0.222 41.116);
+  --color-chart-2: oklch(0.6 0.118 184.704);
+  --color-chart-3: oklch(0.398 0.07 227.392);
+  --color-chart-4: oklch(0.828 0.189 84.429);
+  --color-chart-5: oklch(0.769 0.188 70.08);
+
+  /* Sidebar */
+  --color-sidebar: hsl(0 0% 98%);
+  --color-sidebar-foreground: oklch(0.141 0.005 285.823);
+  --color-sidebar-primary: oklch(0.21 0.006 285.885);
+  --color-sidebar-primary-foreground: oklch(0.985 0 0);
+  --color-sidebar-accent: hsl(210 20% 96%);
+  --color-sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --color-sidebar-border: oklch(0.3039 0.04 213.68 / 0.075);
+  --color-sidebar-ring: oklch(0.705 0.015 286.067);
+
+  /* Radius scale */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Dark mode overrides */
+.dark {
+  --color-background: hsl(0 0% 2%);
+  --color-foreground: hsl(0 0% 98%);
+
+  /* Background levels - inverted for dark mode */
+  --color-background-50: hsl(0 0% 6.5%);
+  --color-background-100: hsl(0 0% 9%);
+  --color-background-200: hsl(0 0% 12%);
+  --color-background-300: hsl(0 0% 16%);
+
+  /* Card */
+  --color-card: hsl(0 0% 9%);
+  --color-card-foreground: hsl(0 0% 98%);
+
+  /* Popover */
+  --color-popover: hsl(0 0% 9%);
+  --color-popover-foreground: hsl(0 0% 98%);
+
+  /* Primary */
+  --color-primary: oklch(0.985 0 0);
+  --color-primary-foreground: oklch(0.21 0.006 285.885);
+
+  /* Secondary */
+  --color-secondary: hsl(0 0% 15%);
+  --color-secondary-foreground: hsl(0 0% 98%);
+
+  /* Muted */
+  --color-muted: hsl(0 0% 15%);
+  --color-muted-foreground: hsl(0 0% 64%);
+
+  /* Accent */
+  --color-accent: hsl(0 0% 15%);
+  --color-accent-foreground: hsl(0 0% 98%);
+
+  /* Destructive */
+  --color-destructive: oklch(0.704 0.191 22.216);
+  --color-destructive-foreground: hsl(0 0% 100%);
+
+  /* Border */
+  --color-border: oklch(0.9296 0.007 106.53 / 0.05);
+  --color-border-secondary: hsl(240 4% 12%);
+
+  /* Input & Ring */
+  --color-input: oklch(0.9296 0.007 106.53 / 0.05);
+  --color-ring: oklch(0.556 0.016 285.938);
+
+  /* Chart colors - adjusted for dark mode */
+  --color-chart-1: oklch(0.488 0.243 264.376);
+  --color-chart-2: oklch(0.696 0.17 162.48);
+  --color-chart-3: oklch(0.769 0.188 70.08);
+  --color-chart-4: oklch(0.627 0.265 303.9);
+  --color-chart-5: oklch(0.645 0.246 16.439);
+
+  /* Sidebar */
+  --color-sidebar: hsl(0 0% 4%);
+  --color-sidebar-foreground: hsl(0 0% 98%);
+  --color-sidebar-primary: oklch(0.488 0.243 264.376);
+  --color-sidebar-primary-foreground: hsl(0 0% 100%);
+  --color-sidebar-accent: hsl(0 0% 15%);
+  --color-sidebar-accent-foreground: hsl(0 0% 98%);
+  --color-sidebar-border: oklch(0.9296 0.007 106.53 / 0.05);
+  --color-sidebar-ring: oklch(0.488 0.243 264.376);
+}
+
+/* =================================================================
+   Base Styles
+   ================================================================= */
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* =================================================================
+   Scrollbar Styling
+   ================================================================= */
+
+/* Hide scrollbar utility class */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
+
+/* =================================================================
+   Focus Styles
+   ================================================================= */
+
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* =================================================================
+   Selection Styles
+   ================================================================= */
+
+::selection {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+
+/* =================================================================
+   Animation Utilities
+   ================================================================= */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 200ms ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 200ms ease-out;
+}
+
+.animate-slide-down {
+  animation: slide-down 200ms ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 200ms ease-out;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* =================================================================
+   Utility Classes
+   ================================================================= */
+
+/* Line clamp utilities */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-chart-1));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass effect */
+.glass {
+  background: var(--color-background) / 80%;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Card hover effect */
+.card-hover {
+  transition: all 200ms ease;
+}
+
+.card-hover:hover {
+  background: var(--color-accent);
+}
+
+/* Active press effect */
+.press-effect:active {
+  transform: scale(0.97);
+}
