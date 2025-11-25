@@ -458,10 +458,41 @@ model WorkoutSession {
   workoutType    WorkoutType  @map("workout_type")
   routineName    String?      @map("routine_name")
   durationMin    Int?         @map("duration_min")
+
+  // Running/Walking/Cycling Metrics
   distanceKm     Float?       @map("distance_km")
   paceMinPerKm   Float?       @map("pace_min_per_km")
   steps          Int?
+  cadence        Int?         // steps per minute (running) or rpm (cycling)
+  elevationGain  Int?         @map("elevation_gain") // meters
+  elevationLoss  Int?         @map("elevation_loss") // meters
+  avgSpeed       Float?       @map("avg_speed") // km/h for cycling
+  maxSpeed       Float?       @map("max_speed") // km/h for cycling
+
+  // Heart Rate Metrics
   avgHeartRate   Int?         @map("avg_heart_rate")
+  maxHeartRate   Int?         @map("max_heart_rate")
+
+  // Swimming Metrics
+  laps           Int?         // number of pool lengths
+  poolLength     Int?         @map("pool_length") // meters (25 or 50)
+  strokeType     StrokeType?  @map("stroke_type")
+  strokeCount    Int?         @map("stroke_count") // strokes per lap
+  swolfScore     Int?         @map("swolf_score") // time + strokes
+
+  // Strength Training Metrics (session-level summary)
+  totalVolume    Float?       @map("total_volume") // total tonnage (sets x reps x weight)
+  totalSets      Int?         @map("total_sets")
+  totalReps      Int?         @map("total_reps")
+  rpe            Int?         // Rate of Perceived Exertion 1-10
+  avgRestTime    Int?         @map("avg_rest_time") // seconds between sets
+
+  // HIIT Metrics
+  rounds         Int?         // number of rounds/circuits
+  workInterval   Int?         @map("work_interval") // seconds
+  restInterval   Int?         @map("rest_interval") // seconds
+
+  // General Metrics
   calories       Int?
   intensityLevel Int?         @map("intensity_level") // 1-5
   focus          WorkoutFocus @default(endurance)
@@ -502,6 +533,14 @@ enum WorkoutFocus {
   other
 }
 
+enum StrokeType {
+  freestyle
+  backstroke
+  breaststroke
+  butterfly
+  mixed
+}
+
 model WorkoutSet {
   id               String  @id @default(uuid())
   workoutSessionId String  @map("workout_session_id")
@@ -509,6 +548,9 @@ model WorkoutSet {
   setNumber        Int     @map("set_number")
   reps             Int?
   weightKg         Float?  @map("weight_kg")
+  durationSec      Int?    @map("duration_sec") // for timed exercises
+  restAfterSec     Int?    @map("rest_after_sec") // rest after this set
+  rpe              Int?    // Rate of Perceived Exertion for this set 1-10
   notes            String? @db.Text
 
   // Relations

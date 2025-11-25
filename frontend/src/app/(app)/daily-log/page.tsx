@@ -638,12 +638,12 @@ export default function DailyLogPage() {
 
               <div>
                 <Label>Day Score (1-10)</Label>
-                <div className="flex gap-1 mt-2 flex-wrap">
+                <div className="grid grid-cols-10 gap-1 mt-2">
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
                     <button
                       key={score}
                       onClick={() => setDayScore(score === dayScore ? null : score)}
-                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                      className={`h-8 rounded-lg text-xs font-medium transition-colors ${
                         dayScore === score
                           ? score <= 3
                             ? 'bg-red-500 text-white'
