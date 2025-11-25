@@ -5,6 +5,7 @@ import {
   getWeeklyOverview,
   getMonthlyStats,
   getInsights,
+  getChartData,
 } from '../controllers/dashboard.controller.js';
 
 const router = Router();
@@ -15,5 +16,6 @@ router.get('/today', getTodaySummary);
 router.get('/weekly', getWeeklyOverview);
 router.get('/monthly', getMonthlyStats);
 router.get('/insights', getInsights);
+router.get('/charts', getChartData);
 
 export default router;

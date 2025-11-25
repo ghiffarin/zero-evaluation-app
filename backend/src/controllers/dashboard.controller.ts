@@ -259,6 +259,249 @@ export const getMonthlyStats = async (req: Request, res: Response): Promise<void
   }
 };
 
+// Get chart data for dashboard visualizations
+export const getChartData = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const days = parseInt((req.query.days as string) || '14');
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - days + 1);
+    startDate.setHours(0, 0, 0, 0);
+
+    // Fetch all data for the period
+    const [
+      dailyLogs,
+      wellness,
+      workouts,
+      skills,
+      ielts,
+      books,
+      mastersPrep,
+      career,
+      financial,
+    ] = await Promise.all([
+      prisma.dailyLog.findMany({
+        where: { userId, date: { gte: startDate, lte: endDate } },
+        orderBy: { date: 'asc' },
+      }),
+      prisma.wellnessEntry.findMany({
+        where: { userId, date: { gte: startDate, lte: endDate } },
+        orderBy: { date: 'asc' },
+      }),
+      prisma.workoutSession.findMany({
+        where: { userId, date: { gte: startDate, lte: endDate } },
+        orderBy: { date: 'asc' },
+      }),
+      prisma.skillSession.findMany({
+        where: { userId, date: { gte: startDate, lte: endDate } },
+        orderBy: { date: 'asc' },
+      }),
+      prisma.ieltsSession.findMany({
+        where: { userId, date: { gte: startDate, lte: endDate } },
+        orderBy: { date: 'asc' },
+      }),
+      prisma.bookReadingSession.findMany({
+        where: { userId, date: { gte: startDate, lte: endDate } },
+        orderBy: { date: 'asc' },
+      }),
+      prisma.mastersPrepSession.findMany({
+        where: { userId, date: { gte: startDate, lte: endDate } },
+        orderBy: { date: 'asc' },
+      }),
+      prisma.careerActivity.findMany({
+        where: { userId, date: { gte: startDate, lte: endDate } },
+        orderBy: { date: 'asc' },
+      }),
+      prisma.financialTransaction.findMany({
+        where: { userId, date: { gte: startDate, lte: endDate } },
+        orderBy: { date: 'asc' },
+      }),
+    ]);
+
+    // Helper to format date as YYYY-MM-DD
+    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
+    // Create date range array
+    const dateRange: string[] = [];
+    const current = new Date(startDate);
+    while (current <= endDate) {
+      dateRange.push(formatDate(current));
+      current.setDate(current.getDate() + 1);
+    }
+
+    // Group data by date
+    const groupByDate = <T extends { date: Date }>(items: T[]) => {
+      const map = new Map<string, T[]>();
+      items.forEach(item => {
+        const dateKey = formatDate(item.date);
+        if (!map.has(dateKey)) map.set(dateKey, []);
+        map.get(dateKey)!.push(item);
+      });
+      return map;
+    };
+
+    const workoutsByDate = groupByDate(workouts);
+    const skillsByDate = groupByDate(skills);
+    const ieltsByDate = groupByDate(ielts);
+    const booksByDate = groupByDate(books);
+    const mastersPrepByDate = groupByDate(mastersPrep);
+    const careerByDate = groupByDate(career);
+    const financialByDate = groupByDate(financial);
+    const wellnessByDate = groupByDate(wellness);
+
+    // 1. Time Investment Chart Data (stacked bar chart)
+    const timeInvestmentData = dateRange.map(date => {
+      const dayWorkouts = workoutsByDate.get(date) || [];
+      const daySkills = skillsByDate.get(date) || [];
+      const dayIelts = ieltsByDate.get(date) || [];
+      const dayBooks = booksByDate.get(date) || [];
+      const dayMastersPrep = mastersPrepByDate.get(date) || [];
+      const dayCareer = careerByDate.get(date) || [];
+
+      const workoutHours = dayWorkouts.reduce((sum, w) => sum + (w.durationMin || 0), 0) / 60;
+      const learningHours = (
+        daySkills.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0) +
+        dayIelts.reduce((sum, i) => sum + (i.timeSpentMin || 0), 0) +
+        dayBooks.reduce((sum, b) => sum + (b.timeSpentMin || 0), 0) +
+        dayMastersPrep.reduce((sum, m) => sum + (m.timeSpentMin || 0), 0)
+      ) / 60;
+      const workHours = dayCareer.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60;
+
+      return {
+        date,
+        displayDate: new Date(date).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }),
+        workout: Number(workoutHours.toFixed(2)),
+        learning: Number(learningHours.toFixed(2)),
+        work: Number(workHours.toFixed(2)),
+      };
+    });
+
+    // 2. Wellness Trend Data (line chart)
+    const wellnessTrendData = dateRange.map(date => {
+      const dayWellness = wellnessByDate.get(date)?.[0];
+      return {
+        date,
+        displayDate: new Date(date).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }),
+        sleep: dayWellness?.sleepHours || null,
+        energy: dayWellness?.energyLevel || null,
+        mood: dayWellness?.moodScore || null,
+        stress: dayWellness?.stressLevel || null,
+      };
+    });
+
+    // 3. Learning Breakdown Data (pie/donut chart)
+    const totalIeltsMin = ielts.reduce((sum, i) => sum + (i.timeSpentMin || 0), 0);
+    const totalSkillsMin = skills.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0);
+    const totalBooksMin = books.reduce((sum, b) => sum + (b.timeSpentMin || 0), 0);
+    const totalMastersPrepMin = mastersPrep.reduce((sum, m) => sum + (m.timeSpentMin || 0), 0);
+
+    const learningBreakdownData = [
+      { name: 'IELTS', value: totalIeltsMin, color: '#3b82f6' },
+      { name: 'Skills', value: totalSkillsMin, color: '#10b981' },
+      { name: 'Books', value: totalBooksMin, color: '#f59e0b' },
+      { name: 'Masters Prep', value: totalMastersPrepMin, color: '#8b5cf6' },
+    ].filter(item => item.value > 0);
+
+    // 4. Financial Flow Data (grouped bar chart - weekly)
+    const weeklyFinancialData: { week: string; spending: number; income: number; investment: number }[] = [];
+    const weeks = Math.ceil(days / 7);
+
+    for (let i = 0; i < weeks; i++) {
+      const weekStart = new Date(startDate);
+      weekStart.setDate(weekStart.getDate() + i * 7);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+
+      const weekTransactions = financial.filter(t => {
+        const txDate = new Date(t.date);
+        return txDate >= weekStart && txDate <= weekEnd;
+      });
+
+      weeklyFinancialData.push({
+        week: `Week ${i + 1}`,
+        spending: weekTransactions.filter(t => t.direction === 'spend').reduce((sum, t) => sum + t.amountIdr, 0),
+        income: weekTransactions.filter(t => t.direction === 'income').reduce((sum, t) => sum + t.amountIdr, 0),
+        investment: weekTransactions.filter(t => t.direction === 'invest').reduce((sum, t) => sum + t.amountIdr, 0),
+      });
+    }
+
+    // 5. Activity Heatmap Data
+    const activityHeatmapData = dateRange.map(date => {
+      const activities = [
+        (workoutsByDate.get(date) || []).length > 0,
+        (skillsByDate.get(date) || []).length > 0,
+        (ieltsByDate.get(date) || []).length > 0,
+        (booksByDate.get(date) || []).length > 0,
+        (wellnessByDate.get(date) || []).length > 0,
+        (financialByDate.get(date) || []).length > 0,
+        (careerByDate.get(date) || []).length > 0,
+      ];
+      const activeModules = activities.filter(Boolean).length;
+
+      return {
+        date,
+        day: new Date(date).getDate(),
+        weekday: new Date(date).getDay(),
+        intensity: activeModules,
+        level: activeModules === 0 ? 0 : activeModules <= 2 ? 1 : activeModules <= 4 ? 2 : activeModules <= 5 ? 3 : 4,
+      };
+    });
+
+    // 6. Summary Stats
+    const summaryStats = {
+      totalLearningHours: Number(((totalIeltsMin + totalSkillsMin + totalBooksMin + totalMastersPrepMin) / 60).toFixed(1)),
+      totalWorkoutHours: Number((workouts.reduce((sum, w) => sum + (w.durationMin || 0), 0) / 60).toFixed(1)),
+      totalWorkHours: Number((career.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60).toFixed(1)),
+      avgWellnessScore: wellness.length > 0
+        ? Number((wellness.reduce((sum, w) => sum + (w.wellnessScore || 0), 0) / wellness.length).toFixed(1))
+        : null,
+      daysTracked: new Set([
+        ...workouts.map(w => formatDate(w.date)),
+        ...skills.map(s => formatDate(s.date)),
+        ...wellness.map(w => formatDate(w.date)),
+        ...financial.map(f => formatDate(f.date)),
+      ]).size,
+      streakDays: calculateStreak(dateRange, [
+        ...workouts.map(w => formatDate(w.date)),
+        ...skills.map(s => formatDate(s.date)),
+        ...wellness.map(w => formatDate(w.date)),
+      ]),
+    };
+
+    sendSuccess(res, {
+      period: { start: startDate, end: endDate, days },
+      timeInvestment: timeInvestmentData,
+      wellnessTrend: wellnessTrendData,
+      learningBreakdown: learningBreakdownData,
+      financialFlow: weeklyFinancialData,
+      activityHeatmap: activityHeatmapData,
+      summary: summaryStats,
+    });
+  } catch (error) {
+    console.error('Get chart data error:', error);
+    sendError(res, 'Failed to fetch chart data', 500);
+  }
+};
+
+// Helper to calculate streak
+function calculateStreak(dateRange: string[], activeDates: string[]): number {
+  const activeSet = new Set(activeDates);
+  let streak = 0;
+
+  // Start from today and go backwards
+  for (let i = dateRange.length - 1; i >= 0; i--) {
+    if (activeSet.has(dateRange[i])) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+}
+
 // Get insights (cross-module correlations)
 export const getInsights = async (req: Request, res: Response): Promise<void> => {
   try {

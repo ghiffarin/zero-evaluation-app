@@ -9,11 +9,68 @@ const crud = createCrudController({
   searchFields: ['physicalSymptoms', 'wellnessNote'],
 });
 
-export const createWellnessEntry = crud.create;
+// Helper function to calculate wellness score
+function calculateWellnessScore(data: Record<string, unknown>): number | null {
+  const scores = [
+    data.sleepQuality,
+    data.energyLevel,
+    data.moodScore,
+    data.mentalClarity,
+    data.dietDiscipline,
+    data.hygieneScore,
+  ].filter((s) => s !== null && s !== undefined) as number[];
+
+  return scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+}
+
+// Custom create with wellness score calculation
+export const createWellnessEntry = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const data = req.body;
+    const wellnessScore = calculateWellnessScore(data);
+
+    const record = await prisma.wellnessEntry.create({
+      data: {
+        ...data,
+        userId,
+        date: new Date(data.date),
+        wellnessScore,
+      },
+    });
+
+    sendSuccess(res, record, 'Wellness entry created successfully');
+  } catch (error) {
+    console.error('Create wellness entry error:', error);
+    sendError(res, 'Failed to create wellness entry', 500);
+  }
+};
+
+// Custom update with wellness score calculation
+export const updateWellnessEntry = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { id } = req.params;
+    const data = req.body;
+    const wellnessScore = calculateWellnessScore(data);
+
+    const record = await prisma.wellnessEntry.update({
+      where: { id, userId },
+      data: {
+        ...data,
+        wellnessScore,
+      },
+    });
+
+    sendSuccess(res, record, 'Wellness entry updated successfully');
+  } catch (error) {
+    console.error('Update wellness entry error:', error);
+    sendError(res, 'Failed to update wellness entry', 500);
+  }
+};
 export const getAllWellnessEntries = crud.getAll;
 export const getWellnessEntryById = crud.getOne;
 export const getWellnessEntryByDate = crud.getByDate;
-export const updateWellnessEntry = crud.update;
 export const deleteWellnessEntry = crud.delete;
 
 // Upsert wellness entry by date
@@ -22,21 +79,8 @@ export const upsertWellnessEntry = async (req: Request, res: Response): Promise<
     const userId = req.user!.id;
     const { date } = req.params;
     const dateObj = new Date(date);
-
-    // Calculate wellness score
     const data = req.body;
-    const scores = [
-      data.sleepQuality,
-      data.energyLevel,
-      data.moodScore,
-      data.mentalClarity,
-      data.dietDiscipline,
-      data.hygieneScore,
-    ].filter((s) => s !== null && s !== undefined);
-
-    const wellnessScore = scores.length
-      ? scores.reduce((a, b) => a + b, 0) / scores.length
-      : null;
+    const wellnessScore = calculateWellnessScore(data);
 
     const record = await prisma.wellnessEntry.upsert({
       where: {

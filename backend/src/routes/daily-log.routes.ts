@@ -9,6 +9,7 @@ import {
   deleteDailyLog,
   upsertDailyLog,
   getWeeklySummary,
+  aggregateDailyData,
 } from '../controllers/daily-log.controller.js';
 
 const router = Router();
@@ -16,6 +17,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/weekly-summary', getWeeklySummary);
+router.get('/aggregate/:date', aggregateDailyData);
 router.get('/date/:date', getDailyLogByDate);
 router.put('/date/:date', upsertDailyLog);
 

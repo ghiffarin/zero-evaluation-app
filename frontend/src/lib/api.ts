@@ -127,6 +127,7 @@ export const api = {
     weekly: () => request<ApiResponse<unknown>>('/dashboard/weekly'),
     monthly: () => request<ApiResponse<unknown>>('/dashboard/monthly'),
     insights: () => request<ApiResponse<unknown>>('/dashboard/insights'),
+    charts: (days?: number) => request<ApiResponse<unknown>>('/dashboard/charts', { params: days ? { days } : undefined }),
   },
 
   // Daily logs endpoints
@@ -140,6 +141,7 @@ export const api = {
     upsertByDate: (date: string, data: unknown) => api.put<unknown>(`/daily-logs/date/${date}`, data),
     delete: (id: string) => api.delete<unknown>(`/daily-logs/${id}`),
     weeklySummary: () => api.get<unknown>('/daily-logs/weekly-summary'),
+    aggregate: (date: string) => api.get<unknown>(`/daily-logs/aggregate/${date}`),
   },
 
   // IELTS endpoints
@@ -175,15 +177,22 @@ export const api = {
 
   // Books endpoints
   books: {
-    list: (params?: { page?: number; limit?: number; status?: string }) =>
+    list: (params?: { page?: number; limit?: number; status?: string; search?: string }) =>
       api.paginated<unknown>('/books', params),
     get: (id: string) => api.get<unknown>(`/books/${id}`),
+    getWithSessions: (id: string) => api.get<unknown>(`/books/${id}/sessions`),
     create: (data: unknown) => api.post<unknown>('/books', data),
     update: (id: string, data: unknown) => api.put<unknown>(`/books/${id}`, data),
     delete: (id: string) => api.delete<unknown>(`/books/${id}`),
-    addSession: (bookId: string, data: unknown) =>
-      api.post<unknown>(`/books/${bookId}/sessions`, data),
     stats: () => api.get<unknown>('/books/stats'),
+    sessions: {
+      list: (params?: { page?: number; limit?: number; bookId?: string }) =>
+        api.paginated<unknown>('/books/sessions/all', params),
+      get: (id: string) => api.get<unknown>(`/books/sessions/${id}`),
+      create: (data: unknown) => api.post<unknown>('/books/sessions', data),
+      update: (id: string, data: unknown) => api.put<unknown>(`/books/sessions/${id}`, data),
+      delete: (id: string) => api.delete<unknown>(`/books/sessions/${id}`),
+    },
   },
 
   // Skills endpoints
@@ -238,6 +247,7 @@ export const api = {
     create: (data: unknown) => api.post<unknown>('/reflections', data),
     update: (id: string, data: unknown) => api.put<unknown>(`/reflections/${id}`, data),
     delete: (id: string) => api.delete<unknown>(`/reflections/${id}`),
+    stats: () => api.get<unknown>('/reflections/stats'),
   },
 
   // Career endpoints
@@ -257,26 +267,22 @@ export const api = {
       create: (data: unknown) => api.post<unknown>('/career/applications', data),
       update: (id: string, data: unknown) => api.put<unknown>(`/career/applications/${id}`, data),
       delete: (id: string) => api.delete<unknown>(`/career/applications/${id}`),
+      pipeline: () => api.get<unknown>('/career/applications/pipeline'),
     },
+    stats: () => api.get<unknown>('/career/stats'),
   },
 
   // Masters prep endpoints
   mastersPrep: {
-    items: {
-      list: (params?: { page?: number; limit?: number; status?: string; type?: string }) =>
-        api.paginated<unknown>('/masters-prep/items', params),
-      get: (id: string) => api.get<unknown>(`/masters-prep/items/${id}`),
-      create: (data: unknown) => api.post<unknown>('/masters-prep/items', data),
-      update: (id: string, data: unknown) => api.put<unknown>(`/masters-prep/items/${id}`, data),
-      delete: (id: string) => api.delete<unknown>(`/masters-prep/items/${id}`),
-    },
-    sessions: {
-      list: (params?: { page?: number; limit?: number }) =>
-        api.paginated<unknown>('/masters-prep/sessions', params),
-      create: (data: unknown) => api.post<unknown>('/masters-prep/sessions', data),
-      delete: (id: string) => api.delete<unknown>(`/masters-prep/sessions/${id}`),
-    },
+    list: (params?: { page?: number; limit?: number; status?: string; category?: string }) =>
+      api.paginated<unknown>('/masters-prep', params),
+    get: (id: string) => api.get<unknown>(`/masters-prep/${id}`),
+    create: (data: unknown) => api.post<unknown>('/masters-prep', data),
+    update: (id: string, data: unknown) => api.put<unknown>(`/masters-prep/${id}`, data),
+    delete: (id: string) => api.delete<unknown>(`/masters-prep/${id}`),
+    addSession: (itemId: string, data: unknown) => api.post<unknown>(`/masters-prep/${itemId}/sessions`, data),
     stats: () => api.get<unknown>('/masters-prep/stats'),
+    readiness: () => api.get<unknown>('/masters-prep/readiness'),
   },
 
   // Goals endpoints
@@ -287,6 +293,16 @@ export const api = {
     create: (data: unknown) => api.post<unknown>('/goals', data),
     update: (id: string, data: unknown) => api.put<unknown>(`/goals/${id}`, data),
     delete: (id: string) => api.delete<unknown>(`/goals/${id}`),
+    byCategory: (category: string) => api.get<unknown>(`/goals/category/${category}`),
+    stats: () => api.get<unknown>('/goals/stats'),
+    progress: {
+      list: (goalId: string) => api.get<unknown>(`/goals/${goalId}/progress`),
+      add: (goalId: string, data: { date: string; value: number; note?: string }) =>
+        api.post<unknown>(`/goals/${goalId}/progress`, data),
+      update: (progressId: string, data: { date?: string; value?: number; note?: string }) =>
+        api.put<unknown>(`/goals/progress/${progressId}`, data),
+      delete: (progressId: string) => api.delete<unknown>(`/goals/progress/${progressId}`),
+    },
   },
 
   // Projects endpoints
@@ -297,6 +313,7 @@ export const api = {
     create: (data: unknown) => api.post<unknown>('/projects', data),
     update: (id: string, data: unknown) => api.put<unknown>(`/projects/${id}`, data),
     delete: (id: string) => api.delete<unknown>(`/projects/${id}`),
+    getWithActivities: (id: string) => api.get<unknown>(`/projects/${id}/activities`),
   },
 };
 
