@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
-import { formatDate } from '@/lib/utils';
+import { formatDate, toLocalDateString } from '@/lib/utils';
 
 // Types
 interface SkillSession {
@@ -514,7 +514,7 @@ function SkillSessionModal({
   onSave: (data: Partial<SkillSession>) => void;
 }) {
   const [formData, setFormData] = React.useState({
-    date: session?.date ? new Date(session.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    date: toLocalDateString(session?.date),
     skillCategory: session?.skillCategory || 'programming',
     subSkill: session?.subSkill || '',
     timeSpentMin: session?.timeSpentMin || '',

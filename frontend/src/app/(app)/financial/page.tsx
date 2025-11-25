@@ -46,7 +46,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
-import { formatDate } from '@/lib/utils';
+import { formatDate, toLocalDateString } from '@/lib/utils';
 
 // Types
 interface FinancialTransaction {
@@ -618,7 +618,7 @@ function TransactionModal({
   onSave: (data: Partial<FinancialTransaction>) => void;
 }) {
   const [formData, setFormData] = React.useState({
-    date: transaction?.date ? new Date(transaction.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    date: toLocalDateString(transaction?.date),
     amountIdr: transaction?.amountIdr || '',
     direction: transaction?.direction || 'spend',
     category: transaction?.category || 'food',

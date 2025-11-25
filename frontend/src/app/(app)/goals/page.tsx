@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getTodayISO } from '@/lib/utils';
 
 // Types
 interface GoalProgress {
@@ -851,7 +851,7 @@ function ProgressModal({
   onSave: (data: { date: string; value: number; note?: string }) => void;
 }) {
   const [formData, setFormData] = React.useState({
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayISO(),
     value: '',
     note: '',
   });

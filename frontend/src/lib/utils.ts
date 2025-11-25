@@ -22,17 +22,38 @@ export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOpt
 }
 
 /**
- * Format a date to ISO string (YYYY-MM-DD)
+ * Format a date to ISO string (YYYY-MM-DD) in LOCAL timezone
+ * This avoids UTC conversion issues where the date might be off by a day
  */
 export function toISODateString(date: Date): string {
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /**
- * Get today's date as ISO string
+ * Get today's date as ISO string (YYYY-MM-DD) in LOCAL timezone
  */
 export function getTodayISO(): string {
   return toISODateString(new Date());
+}
+
+/**
+ * Check if a date string (YYYY-MM-DD) is today in LOCAL timezone
+ */
+export function isToday(dateString: string): boolean {
+  return dateString === getTodayISO();
+}
+
+/**
+ * Convert a Date object or ISO string to local YYYY-MM-DD format
+ * Handles both existing dates and defaults to today
+ */
+export function toLocalDateString(date?: Date | string | null): string {
+  if (!date) return getTodayISO();
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return toISODateString(d);
 }
 
 /**

@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
-import { formatDate } from '@/lib/utils';
+import { formatDate, toLocalDateString } from '@/lib/utils';
 
 // Types
 interface WorkoutSession {
@@ -567,7 +567,7 @@ function WorkoutModal({
   onSave: (data: Partial<WorkoutSession>) => void;
 }) {
   const [formData, setFormData] = React.useState({
-    date: session?.date ? new Date(session.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    date: toLocalDateString(session?.date),
     workoutType: session?.workoutType || 'jogging',
     routineName: session?.routineName || '',
     durationMin: session?.durationMin || '',

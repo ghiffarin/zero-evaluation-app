@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
-import { formatDate } from '@/lib/utils';
+import { formatDate, toLocalDateString } from '@/lib/utils';
 
 // Types
 interface JournalEntry {
@@ -474,7 +474,7 @@ function JournalModal({
   onSave: (data: Partial<JournalEntry>) => void;
 }) {
   const [formData, setFormData] = React.useState({
-    date: entry?.date ? new Date(entry.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    date: toLocalDateString(entry?.date),
     title: entry?.title || '',
     authors: entry?.authors || '',
     source: entry?.source || '',

@@ -46,7 +46,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
-import { formatDate } from '@/lib/utils';
+import { formatDate, toLocalDateString } from '@/lib/utils';
 
 // Types
 interface CareerActivity {
@@ -941,7 +941,7 @@ function ActivityModal({
   onSave: (data: Partial<CareerActivity>) => void;
 }) {
   const [formData, setFormData] = React.useState({
-    date: activity?.date ? new Date(activity.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    date: toLocalDateString(activity?.date),
     activityType: activity?.activityType || 'portfolio',
     subcategory: activity?.subcategory || '',
     targetEntity: activity?.targetEntity || '',

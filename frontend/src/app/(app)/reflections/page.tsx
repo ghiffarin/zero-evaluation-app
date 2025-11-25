@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
-import { formatDate } from '@/lib/utils';
+import { formatDate, toLocalDateString, getTodayISO } from '@/lib/utils';
 
 // Types
 interface ReflectionEntry {
@@ -547,7 +547,7 @@ function ReflectionModal({
   onSave: (data: Partial<ReflectionEntry>) => void;
 }) {
   const [formData, setFormData] = React.useState({
-    date: entry?.date ? new Date(entry.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    date: toLocalDateString(entry?.date),
     wentWell: entry?.wentWell || '',
     wentWrong: entry?.wentWrong || '',
     rootCause: entry?.rootCause || '',
@@ -812,15 +812,24 @@ function ReflectionModal({
 }
 
 // Helper functions
+function getYesterdayISO(): string {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const year = yesterday.getFullYear();
+  const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+  const day = String(yesterday.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function calculateStreak(entries: ReflectionEntry[]): number {
   if (entries.length === 0) return 0;
 
   const sortedDates = entries
-    .map((e) => new Date(e.date).toISOString().split('T')[0])
+    .map((e) => toLocalDateString(e.date))
     .sort((a, b) => b.localeCompare(a));
 
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const today = getTodayISO();
+  const yesterday = getYesterdayISO();
 
   // Check if there's an entry for today or yesterday
   if (sortedDates[0] !== today && sortedDates[0] !== yesterday) {

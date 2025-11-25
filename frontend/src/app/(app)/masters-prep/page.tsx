@@ -47,7 +47,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getTodayISO } from '@/lib/utils';
 
 // Types
 interface PrepSession {
@@ -1093,7 +1093,7 @@ function SessionModal({
   onSave: (data: { date: string; timeSpentMin?: number; notes?: string }) => void;
 }) {
   const [formData, setFormData] = React.useState({
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayISO(),
     timeSpentMin: '',
     notes: '',
   });

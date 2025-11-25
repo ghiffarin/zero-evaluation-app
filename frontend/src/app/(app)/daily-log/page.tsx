@@ -5,6 +5,7 @@ import { PageContainer, PageHeader } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Label } from '@/components/ui';
 import { useAuth } from '@/contexts/auth-context';
 import api from '@/lib/api';
+import { getTodayISO, isToday as checkIsToday } from '@/lib/utils';
 import {
   Calendar,
   ChevronLeft,
@@ -79,7 +80,7 @@ interface DailyLog {
 
 export default function DailyLogPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getTodayISO());
   const [aggregatedData, setAggregatedData] = useState<AggregatedData | null>(null);
   const [existingLog, setExistingLog] = useState<DailyLog | null>(null);
   const [logs, setLogs] = useState<DailyLog[]>([]);
@@ -230,7 +231,7 @@ export default function DailyLogPage() {
     return 'text-red-500';
   };
 
-  const isToday = selectedDate === new Date().toISOString().split('T')[0];
+  const isToday = checkIsToday(selectedDate);
 
   if (authLoading || loading) {
     return (
