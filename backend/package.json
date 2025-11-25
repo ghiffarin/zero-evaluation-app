@@ -5,12 +5,16 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/server.js",
+    "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "keywords": ["personal-development", "tracking", "api"],
   "author": "Ghiffarin",
