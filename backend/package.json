@@ -1,7 +1,7 @@
 {
-  "name": "pd-os-backend",
+  "name": "zero-evaluation-backend",
   "version": "1.0.0",
-  "description": "Personal Development Operating System - Backend API",
+  "description": "Zero Evaluation Project - Backend API",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

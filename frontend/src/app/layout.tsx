@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'PD-OS - Personal Development Operating System',
+  title: 'Zero Evaluation Project',
   description: 'Track and optimize your personal growth across all life domains',
 };
 

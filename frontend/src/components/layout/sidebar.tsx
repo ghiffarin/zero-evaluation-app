@@ -138,9 +138,9 @@ export function Sidebar({ className }: SidebarProps) {
         <div className="flex h-14 items-center border-b px-4">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <span className="text-sm font-bold text-primary-foreground">PD</span>
+              <span className="text-sm font-bold text-primary-foreground">ZE</span>
             </div>
-            <span className="text-lg font-semibold">PD-OS</span>
+            <span className="text-lg font-semibold">Zero Evaluation</span>
           </Link>
         </div>
 

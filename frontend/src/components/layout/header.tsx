@@ -33,7 +33,7 @@ function getPageTitle(pathname: string): string {
 
   // Check for parent path match
   const basePath = '/' + pathname.split('/')[1];
-  return pageTitles[basePath] || 'PD-OS';
+  return pageTitles[basePath] || 'Zero Evaluation';
 }
 
 export interface HeaderProps {

@@ -33,9 +33,9 @@ app.use('/api', routes);
 // Root route
 app.get('/', (req, res) => {
   res.json({
-    name: 'PD-OS API',
+    name: 'Zero Evaluation API',
     version: '1.0.0',
-    description: 'Personal Development Operating System API',
+    description: 'Zero Evaluation Project API',
     docs: '/api/health',
   });
 });
@@ -48,7 +48,7 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════════╗
-║         PD-OS Backend Server               ║
+║      Zero Evaluation Backend Server        ║
 ╠════════════════════════════════════════════╣
 ║  Status:  Running                          ║
 ║  Port:    ${PORT}                             ║

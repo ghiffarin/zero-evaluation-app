@@ -1,0 +1,9 @@
+# Environment file (contains secrets)
+.env
+
+# Backups (can contain sensitive data)
+backups/
+
+# Temporary files
+*.tmp
+*.temp

@@ -33,6 +33,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  ComposedChart,
 } from 'recharts';
 
 // Types for API responses
@@ -90,9 +91,12 @@ interface ChartData {
     stress: number | null;
   }>;
   learningBreakdown: Array<{
-    name: string;
-    value: number;
-    color: string;
+    date: string;
+    displayDate: string;
+    ielts: number;
+    skills: number;
+    books: number;
+    mastersPrep: number;
   }>;
   financialFlow: Array<{
     week: string;
@@ -206,6 +210,36 @@ export default function DashboardPage() {
         description={formatDate(today, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
       />
 
+      {/* Quick Actions */}
+      <PageSection title="Quick Actions">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <QuickActionCard
+            icon={<CalendarDays className="h-5 w-5" />}
+            label="Daily Log"
+            href="/daily-log"
+            color="bg-blue-500/10 text-blue-600"
+          />
+          <QuickActionCard
+            icon={<Languages className="h-5 w-5" />}
+            label="IELTS Session"
+            href="/ielts"
+            color="bg-purple-500/10 text-purple-600"
+          />
+          <QuickActionCard
+            icon={<Dumbbell className="h-5 w-5" />}
+            label="Log Workout"
+            href="/workouts"
+            color="bg-emerald-500/10 text-emerald-600"
+          />
+          <QuickActionCard
+            icon={<BookOpen className="h-5 w-5" />}
+            label="Reading Log"
+            href="/books"
+            color="bg-amber-500/10 text-amber-600"
+          />
+        </div>
+      </PageSection>
+
       {/* Summary Stats */}
       <PageSection title="Overview (Last 14 Days)">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
@@ -248,168 +282,157 @@ export default function DashboardPage() {
         </div>
       </PageSection>
 
-      {/* Time Investment Chart */}
-      <PageSection title="Time Investment">
+      {/* Time Investment Chart - Full Width */}
+      <Card>
+        <CardHeader className="py-2 px-3">
+          <CardTitle className="text-sm font-medium">Time Investment</CardTitle>
+        </CardHeader>
+        <CardContent className="p-2">
+          <div className="h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData?.timeInvestment || []} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="displayDate"
+                  tick={{ fontSize: 10 }}
+                  className="text-muted-foreground"
+                />
+                <YAxis
+                  tick={{ fontSize: 10 }}
+                  className="text-muted-foreground"
+                  width={30}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                  }}
+                  labelStyle={{ color: '#111827', fontWeight: 600 }}
+                  itemStyle={{ color: '#374151' }}
+                />
+                <Legend wrapperStyle={{ fontSize: '10px' }} />
+                <Bar dataKey="workout" name="Workout" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="learning" name="Learning" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="work" name="Work" stackId="a" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3 Charts Grid - Even 3 columns */}
+      <div className="grid gap-3 md:grid-cols-3">
+        {/* Wellness Trend */}
         <Card>
-          <CardContent className="pt-6">
-            <div className="h-[300px]">
+          <CardHeader className="py-2 px-3">
+            <CardTitle className="text-sm font-medium">Wellness Trend</CardTitle>
+          </CardHeader>
+          <CardContent className="p-2">
+            <div className="h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData?.timeInvestment || []}>
+                <BarChart data={chartData?.wellnessTrend || []} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis
                     dataKey="displayDate"
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 9 }}
                     className="text-muted-foreground"
                   />
                   <YAxis
-                    tick={{ fontSize: 12 }}
-                    label={{ value: 'Hours', angle: -90, position: 'insideLeft', fontSize: 12 }}
+                    tick={{ fontSize: 9 }}
                     className="text-muted-foreground"
+                    width={20}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e5e7eb',
                       borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
                     }}
-                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                    labelStyle={{ color: '#111827', fontWeight: 600 }}
+                    itemStyle={{ color: '#374151' }}
                   />
-                  <Legend />
-                  <Bar dataKey="workout" name="Workout" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="learning" name="Learning" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="work" name="Work" stackId="a" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  <Legend wrapperStyle={{ fontSize: '9px' }} />
+                  <Bar dataKey="energy" name="Energy" stackId="wellness" fill="#10b981" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="mood" name="Mood" stackId="wellness" fill="#f59e0b" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="stress" name="Stress" stackId="wellness" fill="#ef4444" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
-      </PageSection>
 
-      {/* Wellness Trend and Learning Breakdown */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Wellness Trend */}
-        <PageSection title="Wellness Trend">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="h-[280px]">
+        {/* Learning Breakdown */}
+        <Card>
+          <CardHeader className="py-2 px-3">
+            <CardTitle className="text-sm font-medium">Learning Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent className="p-2">
+            <div className="h-[180px]">
+              {chartData?.learningBreakdown && chartData.learningBreakdown.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData?.wellnessTrend || []}>
+                  <BarChart data={chartData.learningBreakdown} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis
                       dataKey="displayDate"
-                      tick={{ fontSize: 11 }}
+                      tick={{ fontSize: 9 }}
                       className="text-muted-foreground"
                     />
                     <YAxis
-                      domain={[0, 5]}
-                      ticks={[0, 1, 2, 3, 4, 5]}
-                      tick={{ fontSize: 11 }}
+                      tick={{ fontSize: 9 }}
+                      tickFormatter={(value) => `${value}h`}
                       className="text-muted-foreground"
+                      width={25}
                     />
                     <Tooltip
+                      formatter={(value: number) => [`${value.toFixed(1)}h`, '']}
                       contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e5e7eb',
                         borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
                       }}
+                      labelStyle={{ color: '#111827', fontWeight: 600 }}
+                      itemStyle={{ color: '#374151' }}
                     />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="energy"
-                      name="Energy"
-                      stroke="#10b981"
-                      strokeWidth={2}
-                      dot={{ fill: '#10b981', r: 3 }}
-                      connectNulls
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="mood"
-                      name="Mood"
-                      stroke="#f59e0b"
-                      strokeWidth={2}
-                      dot={{ fill: '#f59e0b', r: 3 }}
-                      connectNulls
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="stress"
-                      name="Stress"
-                      stroke="#ef4444"
-                      strokeWidth={2}
-                      dot={{ fill: '#ef4444', r: 3 }}
-                      connectNulls
-                    />
-                  </LineChart>
+                    <Legend wrapperStyle={{ fontSize: '9px' }} />
+                    <Bar dataKey="ielts" name="IELTS" stackId="learning" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="skills" name="Skills" stackId="learning" fill="#10b981" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="books" name="Books" stackId="learning" fill="#f59e0b" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="mastersPrep" name="Masters Prep" stackId="learning" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
                 </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </PageSection>
+              ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+                  No learning data yet
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Learning Breakdown */}
-        <PageSection title="Learning Breakdown">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="h-[280px]">
-                {chartData?.learningBreakdown && chartData.learningBreakdown.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={chartData.learningBreakdown}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={2}
-                        dataKey="value"
-                        label={({ name, value }) => `${name}: ${Math.round(value / 60)}h`}
-                        labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                      >
-                        {chartData.learningBreakdown.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value: number) => [`${Math.round(value / 60)}h ${value % 60}m`, 'Time']}
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px',
-                        }}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex h-full items-center justify-center text-muted-foreground">
-                    No learning data yet
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </PageSection>
-      </div>
-
-      {/* Financial Flow */}
-      <PageSection title="Financial Flow">
+        {/* Financial Flow */}
         <Card>
-          <CardContent className="pt-6">
-            <div className="h-[280px]">
+          <CardHeader className="py-2 px-3">
+            <CardTitle className="text-sm font-medium">Financial Flow</CardTitle>
+          </CardHeader>
+          <CardContent className="p-2">
+            <div className="h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData?.financialFlow || []}>
+                <ComposedChart data={chartData?.financialFlow || []} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis
                     dataKey="week"
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 9 }}
                     className="text-muted-foreground"
                   />
                   <YAxis
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
+                    tick={{ fontSize: 9 }}
+                    tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
                     className="text-muted-foreground"
+                    width={25}
                   />
                   <Tooltip
                     formatter={(value: number) => [
@@ -417,21 +440,31 @@ export default function DashboardPage() {
                       ''
                     ]}
                     contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e5e7eb',
                       borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
                     }}
+                    labelStyle={{ color: '#111827', fontWeight: 600 }}
+                    itemStyle={{ color: '#374151' }}
                   />
-                  <Legend />
-                  <Bar dataKey="income" name="Income" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="spending" name="Spending" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="investment" name="Investment" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                  <Legend wrapperStyle={{ fontSize: '9px' }} />
+                  <Bar dataKey="income" name="Income" stackId="financial" fill="#10b981" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="investment" name="Investment" stackId="financial" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Line
+                    type="monotone"
+                    dataKey="spending"
+                    name="Spending"
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    dot={{ fill: '#ef4444', r: 3 }}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
-      </PageSection>
+      </div>
 
       {/* Activity Heatmap */}
       <PageSection title="Activity Heatmap">
@@ -524,36 +557,6 @@ export default function DashboardPage() {
           </Card>
         </PageSection>
       </div>
-
-      {/* Quick Actions */}
-      <PageSection title="Quick Actions">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <QuickActionCard
-            icon={<CalendarDays className="h-5 w-5" />}
-            label="Daily Log"
-            href="/daily-log"
-            color="bg-blue-500/10 text-blue-600"
-          />
-          <QuickActionCard
-            icon={<Languages className="h-5 w-5" />}
-            label="IELTS Session"
-            href="/ielts"
-            color="bg-purple-500/10 text-purple-600"
-          />
-          <QuickActionCard
-            icon={<Dumbbell className="h-5 w-5" />}
-            label="Log Workout"
-            href="/workouts"
-            color="bg-emerald-500/10 text-emerald-600"
-          />
-          <QuickActionCard
-            icon={<BookOpen className="h-5 w-5" />}
-            label="Reading Log"
-            href="/books"
-            color="bg-amber-500/10 text-amber-600"
-          />
-        </div>
-      </PageSection>
 
       {/* Active Goals */}
       {goals.length > 0 && (

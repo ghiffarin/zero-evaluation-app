@@ -6,21 +6,23 @@ import { sendSuccess, sendError } from '../utils/response.js';
 export const getTodaySummary = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+
+    // Get today's date at midnight in local timezone
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const [dailyLog, wellness, reflection, workouts, skills, financial, ielts] =
       await Promise.all([
         prisma.dailyLog.findFirst({
-          where: { userId, date: today },
+          where: { userId, date: { gte: today, lt: tomorrow } },
         }),
         prisma.wellnessEntry.findFirst({
-          where: { userId, date: today },
+          where: { userId, date: { gte: today, lt: tomorrow } },
         }),
         prisma.reflectionEntry.findFirst({
-          where: { userId, date: today },
+          where: { userId, date: { gte: today, lt: tomorrow } },
         }),
         prisma.workoutSession.findMany({
           where: { userId, date: { gte: today, lt: tomorrow } },
@@ -42,7 +44,15 @@ export const getTodaySummary = async (req: Request, res: Response): Promise<void
 
     const summary = {
       date: today,
-      dailyLog,
+      dailyLog: dailyLog
+        ? {
+            moodScore: dailyLog.moodScore,
+            energyScore: dailyLog.energyScore,
+            sleepHours: dailyLog.sleepHours,
+            workHours: dailyLog.workHours,
+            learningHours: dailyLog.learningHours,
+          }
+        : null,
       wellness: wellness
         ? {
             sleepHours: wellness.sleepHours,
@@ -263,14 +273,8 @@ export const getMonthlyStats = async (req: Request, res: Response): Promise<void
 export const getChartData = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const days = parseInt((req.query.days as string) || '14');
-    const endDate = new Date();
-    endDate.setHours(23, 59, 59, 999);
-    const startDate = new Date(endDate);
-    startDate.setDate(startDate.getDate() - days + 1);
-    startDate.setHours(0, 0, 0, 0);
 
-    // Fetch all data for the period
+    // Fetch ALL user data (no date filter) to show only dates with actual data
     const [
       dailyLogs,
       wellness,
@@ -283,39 +287,39 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
       financial,
     ] = await Promise.all([
       prisma.dailyLog.findMany({
-        where: { userId, date: { gte: startDate, lte: endDate } },
+        where: { userId },
         orderBy: { date: 'asc' },
       }),
       prisma.wellnessEntry.findMany({
-        where: { userId, date: { gte: startDate, lte: endDate } },
+        where: { userId },
         orderBy: { date: 'asc' },
       }),
       prisma.workoutSession.findMany({
-        where: { userId, date: { gte: startDate, lte: endDate } },
+        where: { userId },
         orderBy: { date: 'asc' },
       }),
       prisma.skillSession.findMany({
-        where: { userId, date: { gte: startDate, lte: endDate } },
+        where: { userId },
         orderBy: { date: 'asc' },
       }),
       prisma.ieltsSession.findMany({
-        where: { userId, date: { gte: startDate, lte: endDate } },
+        where: { userId },
         orderBy: { date: 'asc' },
       }),
       prisma.bookReadingSession.findMany({
-        where: { userId, date: { gte: startDate, lte: endDate } },
+        where: { userId },
         orderBy: { date: 'asc' },
       }),
       prisma.mastersPrepSession.findMany({
-        where: { userId, date: { gte: startDate, lte: endDate } },
+        where: { userId },
         orderBy: { date: 'asc' },
       }),
       prisma.careerActivity.findMany({
-        where: { userId, date: { gte: startDate, lte: endDate } },
+        where: { userId },
         orderBy: { date: 'asc' },
       }),
       prisma.financialTransaction.findMany({
-        where: { userId, date: { gte: startDate, lte: endDate } },
+        where: { userId },
         orderBy: { date: 'asc' },
       }),
     ]);
@@ -323,12 +327,40 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
     // Helper to format date as YYYY-MM-DD
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
-    // Create date range array
-    const dateRange: string[] = [];
-    const current = new Date(startDate);
-    while (current <= endDate) {
-      dateRange.push(formatDate(current));
-      current.setDate(current.getDate() + 1);
+    // Collect all unique dates that have ANY data
+    const allDatesWithData = new Set<string>();
+    dailyLogs.forEach(d => allDatesWithData.add(formatDate(d.date)));
+    wellness.forEach(w => allDatesWithData.add(formatDate(w.date)));
+    workouts.forEach(w => allDatesWithData.add(formatDate(w.date)));
+    skills.forEach(s => allDatesWithData.add(formatDate(s.date)));
+    ielts.forEach(i => allDatesWithData.add(formatDate(i.date)));
+    books.forEach(b => allDatesWithData.add(formatDate(b.date)));
+    mastersPrep.forEach(m => allDatesWithData.add(formatDate(m.date)));
+    career.forEach(c => allDatesWithData.add(formatDate(c.date)));
+    financial.forEach(f => allDatesWithData.add(formatDate(f.date)));
+
+    // Sort dates chronologically
+    const dateRange = Array.from(allDatesWithData).sort();
+
+    // If no data at all, return empty response
+    if (dateRange.length === 0) {
+      sendSuccess(res, {
+        period: { start: null, end: null, days: 0 },
+        timeInvestment: [],
+        wellnessTrend: [],
+        learningBreakdown: [],
+        financialFlow: [],
+        activityHeatmap: [],
+        summary: {
+          totalLearningHours: 0,
+          totalWorkoutHours: 0,
+          totalWorkHours: 0,
+          avgWellnessScore: null,
+          daysTracked: 0,
+          streakDays: 0,
+        },
+      });
+      return;
     }
 
     // Group data by date
@@ -351,84 +383,134 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
     const financialByDate = groupByDate(financial);
     const wellnessByDate = groupByDate(wellness);
 
-    // 1. Time Investment Chart Data (stacked bar chart)
-    const timeInvestmentData = dateRange.map(date => {
-      const dayWorkouts = workoutsByDate.get(date) || [];
-      const daySkills = skillsByDate.get(date) || [];
-      const dayIelts = ieltsByDate.get(date) || [];
-      const dayBooks = booksByDate.get(date) || [];
-      const dayMastersPrep = mastersPrepByDate.get(date) || [];
-      const dayCareer = careerByDate.get(date) || [];
+    // Helper to format display date properly (avoiding timezone issues)
+    const formatDisplayDate = (dateStr: string) => {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const d = new Date(year, month - 1, day);
+      return `${day} ${d.toLocaleDateString('en-US', { weekday: 'short' })}`;
+    };
 
-      const workoutHours = dayWorkouts.reduce((sum, w) => sum + (w.durationMin || 0), 0) / 60;
-      const learningHours = (
-        daySkills.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0) +
-        dayIelts.reduce((sum, i) => sum + (i.timeSpentMin || 0), 0) +
-        dayBooks.reduce((sum, b) => sum + (b.timeSpentMin || 0), 0) +
-        dayMastersPrep.reduce((sum, m) => sum + (m.timeSpentMin || 0), 0)
-      ) / 60;
-      const workHours = dayCareer.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60;
+    // 1. Time Investment Chart Data - only dates with time tracking data
+    const timeInvestmentData = dateRange
+      .map(date => {
+        const dayWorkouts = workoutsByDate.get(date) || [];
+        const daySkills = skillsByDate.get(date) || [];
+        const dayIelts = ieltsByDate.get(date) || [];
+        const dayBooks = booksByDate.get(date) || [];
+        const dayMastersPrep = mastersPrepByDate.get(date) || [];
+        const dayCareer = careerByDate.get(date) || [];
 
-      return {
-        date,
-        displayDate: new Date(date).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }),
-        workout: Number(workoutHours.toFixed(2)),
-        learning: Number(learningHours.toFixed(2)),
-        work: Number(workHours.toFixed(2)),
-      };
-    });
+        const workoutHours = dayWorkouts.reduce((sum, w) => sum + (w.durationMin || 0), 0) / 60;
+        const learningHours = (
+          daySkills.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0) +
+          dayIelts.reduce((sum, i) => sum + (i.timeSpentMin || 0), 0) +
+          dayBooks.reduce((sum, b) => sum + (b.timeSpentMin || 0), 0) +
+          dayMastersPrep.reduce((sum, m) => sum + (m.timeSpentMin || 0), 0)
+        ) / 60;
+        const workHours = dayCareer.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60;
 
-    // 2. Wellness Trend Data (line chart)
-    const wellnessTrendData = dateRange.map(date => {
-      const dayWellness = wellnessByDate.get(date)?.[0];
-      return {
-        date,
-        displayDate: new Date(date).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }),
-        sleep: dayWellness?.sleepHours || null,
-        energy: dayWellness?.energyLevel || null,
-        mood: dayWellness?.moodScore || null,
-        stress: dayWellness?.stressLevel || null,
-      };
-    });
+        // Only include if there's any time data
+        if (workoutHours === 0 && learningHours === 0 && workHours === 0) {
+          return null;
+        }
 
-    // 3. Learning Breakdown Data (pie/donut chart)
+        return {
+          date,
+          displayDate: formatDisplayDate(date),
+          workout: Number(workoutHours.toFixed(2)),
+          learning: Number(learningHours.toFixed(2)),
+          work: Number(workHours.toFixed(2)),
+        };
+      })
+      .filter(Boolean);
+
+    // 2. Wellness Trend Data - only dates with wellness data
+    const wellnessTrendData = dateRange
+      .map(date => {
+        const dayWellness = wellnessByDate.get(date)?.[0];
+        if (!dayWellness) return null;
+
+        return {
+          date,
+          displayDate: formatDisplayDate(date),
+          sleep: dayWellness.sleepHours || null,
+          energy: dayWellness.energyLevel || null,
+          mood: dayWellness.moodScore || null,
+          stress: dayWellness.stressLevel || null,
+        };
+      })
+      .filter(Boolean);
+
+    // 3. Learning Breakdown Data (daily stacked bar chart - dates on X-axis, hours on Y-axis)
     const totalIeltsMin = ielts.reduce((sum, i) => sum + (i.timeSpentMin || 0), 0);
     const totalSkillsMin = skills.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0);
     const totalBooksMin = books.reduce((sum, b) => sum + (b.timeSpentMin || 0), 0);
     const totalMastersPrepMin = mastersPrep.reduce((sum, m) => sum + (m.timeSpentMin || 0), 0);
 
-    const learningBreakdownData = [
-      { name: 'IELTS', value: totalIeltsMin, color: '#3b82f6' },
-      { name: 'Skills', value: totalSkillsMin, color: '#10b981' },
-      { name: 'Books', value: totalBooksMin, color: '#f59e0b' },
-      { name: 'Masters Prep', value: totalMastersPrepMin, color: '#8b5cf6' },
-    ].filter(item => item.value > 0);
+    const learningBreakdownData = dateRange
+      .map(date => {
+        const dayIelts = ieltsByDate.get(date) || [];
+        const daySkills = skillsByDate.get(date) || [];
+        const dayBooks = booksByDate.get(date) || [];
+        const dayMastersPrep = mastersPrepByDate.get(date) || [];
 
-    // 4. Financial Flow Data (grouped bar chart - weekly)
+        const ieltsHours = dayIelts.reduce((sum, i) => sum + (i.timeSpentMin || 0), 0) / 60;
+        const skillsHours = daySkills.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0) / 60;
+        const booksHours = dayBooks.reduce((sum, b) => sum + (b.timeSpentMin || 0), 0) / 60;
+        const mastersPrepHours = dayMastersPrep.reduce((sum, m) => sum + (m.timeSpentMin || 0), 0) / 60;
+
+        // Only include if there's any learning data
+        if (ieltsHours === 0 && skillsHours === 0 && booksHours === 0 && mastersPrepHours === 0) {
+          return null;
+        }
+
+        return {
+          date,
+          displayDate: formatDisplayDate(date),
+          ielts: Number(ieltsHours.toFixed(2)),
+          skills: Number(skillsHours.toFixed(2)),
+          books: Number(booksHours.toFixed(2)),
+          mastersPrep: Number(mastersPrepHours.toFixed(2)),
+        };
+      })
+      .filter(Boolean);
+
+    // 4. Financial Flow Data - group by actual weeks with data
+    const financialDates = financial.map(f => formatDate(f.date)).sort();
     const weeklyFinancialData: { week: string; spending: number; income: number; investment: number }[] = [];
-    const weeks = Math.ceil(days / 7);
 
-    for (let i = 0; i < weeks; i++) {
-      const weekStart = new Date(startDate);
-      weekStart.setDate(weekStart.getDate() + i * 7);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
+    if (financialDates.length > 0) {
+      const firstFinancialDate = new Date(financialDates[0]);
+      const lastFinancialDate = new Date(financialDates[financialDates.length - 1]);
+      const weekCount = Math.ceil((lastFinancialDate.getTime() - firstFinancialDate.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
 
-      const weekTransactions = financial.filter(t => {
-        const txDate = new Date(t.date);
-        return txDate >= weekStart && txDate <= weekEnd;
-      });
+      for (let i = 0; i < Math.min(weekCount, 4); i++) { // Max 4 weeks
+        const weekStart = new Date(firstFinancialDate);
+        weekStart.setDate(weekStart.getDate() + i * 7);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
 
-      weeklyFinancialData.push({
-        week: `Week ${i + 1}`,
-        spending: weekTransactions.filter(t => t.direction === 'spend').reduce((sum, t) => sum + t.amountIdr, 0),
-        income: weekTransactions.filter(t => t.direction === 'income').reduce((sum, t) => sum + t.amountIdr, 0),
-        investment: weekTransactions.filter(t => t.direction === 'invest').reduce((sum, t) => sum + t.amountIdr, 0),
-      });
+        const weekTransactions = financial.filter(t => {
+          const txDate = new Date(t.date);
+          return txDate >= weekStart && txDate <= weekEnd;
+        });
+
+        if (weekTransactions.length > 0) {
+          weeklyFinancialData.push({
+            week: `Week ${i + 1}`,
+            spending: weekTransactions.filter(t => t.direction === 'spend').reduce((sum, t) => sum + t.amountIdr, 0),
+            income: weekTransactions.filter(t => t.direction === 'income').reduce((sum, t) => sum + t.amountIdr, 0),
+            investment: weekTransactions.filter(t => t.direction === 'invest').reduce((sum, t) => sum + t.amountIdr, 0),
+          });
+        }
+      }
     }
 
-    // 5. Activity Heatmap Data
+    // 5. Activity Heatmap Data - only dates with data
     const activityHeatmapData = dateRange.map(date => {
+      const [year, month, day] = date.split('-').map(Number);
+      const d = new Date(year, month - 1, day);
+
       const activities = [
         (workoutsByDate.get(date) || []).length > 0,
         (skillsByDate.get(date) || []).length > 0,
@@ -442,8 +524,8 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
 
       return {
         date,
-        day: new Date(date).getDate(),
-        weekday: new Date(date).getDay(),
+        day: d.getDate(),
+        weekday: d.getDay(),
         intensity: activeModules,
         level: activeModules === 0 ? 0 : activeModules <= 2 ? 1 : activeModules <= 4 ? 2 : activeModules <= 5 ? 3 : 4,
       };
@@ -457,21 +539,15 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
       avgWellnessScore: wellness.length > 0
         ? Number((wellness.reduce((sum, w) => sum + (w.wellnessScore || 0), 0) / wellness.length).toFixed(1))
         : null,
-      daysTracked: new Set([
-        ...workouts.map(w => formatDate(w.date)),
-        ...skills.map(s => formatDate(s.date)),
-        ...wellness.map(w => formatDate(w.date)),
-        ...financial.map(f => formatDate(f.date)),
-      ]).size,
-      streakDays: calculateStreak(dateRange, [
-        ...workouts.map(w => formatDate(w.date)),
-        ...skills.map(s => formatDate(s.date)),
-        ...wellness.map(w => formatDate(w.date)),
-      ]),
+      daysTracked: dateRange.length,
+      streakDays: calculateStreak(dateRange, dateRange), // All dates in range have data
     };
 
+    const startDate = dateRange.length > 0 ? new Date(dateRange[0]) : null;
+    const endDate = dateRange.length > 0 ? new Date(dateRange[dateRange.length - 1]) : null;
+
     sendSuccess(res, {
-      period: { start: startDate, end: endDate, days },
+      period: { start: startDate, end: endDate, days: dateRange.length },
       timeInvestment: timeInvestmentData,
       wellnessTrend: wellnessTrendData,
       learningBreakdown: learningBreakdownData,

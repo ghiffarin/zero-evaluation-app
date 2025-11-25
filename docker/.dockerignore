@@ -1,0 +1,51 @@
+# Dependencies
+node_modules
+*/node_modules
+
+# Build outputs
+.next
+dist
+
+# Environment files (use .env.example as template)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test files
+coverage
+.nyc_output
+
+# Git
+.git
+.gitignore
+
+# Docker
+docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Backups
+backups
+
+# Documentation
+*.md
+!README.md
+
+# Design and materials
+Design
+Material

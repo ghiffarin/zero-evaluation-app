@@ -273,12 +273,15 @@ export default function DailyLogPage() {
             </Button>
 
             <div className="flex items-center gap-3">
-              <Calendar className="h-5 w-5 text-muted-foreground" />
+              {isToday ? (
+                <span className="px-2.5 py-1 text-xs font-semibold bg-blue-500 text-white rounded-full">
+                  Today
+                </span>
+              ) : (
+                <Calendar className="h-5 w-5 text-muted-foreground" />
+              )}
               <div className="text-center">
                 <div className="font-semibold">{formatDate(selectedDate)}</div>
-                {isToday && (
-                  <span className="text-xs text-primary font-medium">Today</span>
-                )}
               </div>
               <Input
                 type="date"
