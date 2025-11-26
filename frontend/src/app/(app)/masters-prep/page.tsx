@@ -411,58 +411,85 @@ export default function MastersPrepPage() {
             />
           </div>
 
-          {/* Progress by Priority */}
+          {/* Progress by Priority & Status */}
           <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-2">
             {/* Priority Distribution */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">By Priority</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm flex items-center gap-2">
-                      <Badge variant="error">P1</Badge> High Priority
-                    </span>
-                    <span className="font-medium">{stats.byPriority.high}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm flex items-center gap-2">
-                      <Badge variant="warning">P2</Badge> Medium Priority
-                    </span>
-                    <span className="font-medium">{stats.byPriority.medium}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm flex items-center gap-2">
-                      <Badge variant="success">P3</Badge> Low Priority
-                    </span>
-                    <span className="font-medium">{stats.byPriority.low}</span>
-                  </div>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">By Priority</CardTitle>
+                  <span className="text-sm text-muted-foreground">
+                    {stats.byPriority.high + stats.byPriority.medium + stats.byPriority.low} items
+                  </span>
                 </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[
+                  { label: 'High Priority', badge: 'P1', count: stats.byPriority.high, color: 'bg-red-500', textColor: 'text-red-500 dark:text-red-400' },
+                  { label: 'Medium Priority', badge: 'P2', count: stats.byPriority.medium, color: 'bg-yellow-500', textColor: 'text-yellow-500 dark:text-yellow-400' },
+                  { label: 'Low Priority', badge: 'P3', count: stats.byPriority.low, color: 'bg-green-500', textColor: 'text-green-500 dark:text-green-400' },
+                ].map(({ label, badge, count, color, textColor }) => {
+                  const total = stats.byPriority.high + stats.byPriority.medium + stats.byPriority.low;
+                  const percentage = total > 0 ? (count / total) * 100 : 0;
+                  return (
+                    <div key={badge} className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm flex items-center gap-2">
+                          <span className={`inline-flex items-center justify-center w-6 h-5 rounded text-xs font-medium ${color} text-white`}>
+                            {badge}
+                          </span>
+                          <span>{label}</span>
+                        </span>
+                        <span className="font-medium tabular-nums">{count}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${color}`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
 
             {/* Status Distribution */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">By Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {STATUSES.map(({ value, label, color }) => {
-                    const count = stats.byStatus[value] || 0;
-                    const percentage = stats.totalItems > 0 ? (count / stats.totalItems) * 100 : 0;
-                    return (
-                      <div key={value}>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className={color}>{label}</span>
-                          <span className="text-muted-foreground">{count}</span>
-                        </div>
-                        <Progress value={percentage} className="h-1.5" />
-                      </div>
-                    );
-                  })}
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">By Status</CardTitle>
+                  <span className="text-sm text-muted-foreground">{stats.totalItems} items</span>
                 </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[
+                  { value: 'not_started', label: 'Not Started', color: 'bg-gray-400' },
+                  { value: 'in_progress', label: 'In Progress', color: 'bg-blue-500' },
+                  { value: 'halfway', label: 'Halfway', color: 'bg-yellow-500' },
+                  { value: 'almost_done', label: 'Almost Done', color: 'bg-orange-500' },
+                  { value: 'completed', label: 'Completed', color: 'bg-green-500' },
+                ].map(({ value, label, color }) => {
+                  const count = stats.byStatus[value] || 0;
+                  const percentage = stats.totalItems > 0 ? (count / stats.totalItems) * 100 : 0;
+                  return (
+                    <div key={value} className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
+                          <span>{label}</span>
+                        </span>
+                        <span className="font-medium tabular-nums">{count}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${color}`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
           </div>
