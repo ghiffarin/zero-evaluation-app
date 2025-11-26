@@ -762,6 +762,7 @@ model JobApplication {
   status           JobApplicationStatus @default(draft)
   contactName      String?              @map("contact_name")
   contactEmail     String?              @map("contact_email")
+  contacts         Json?                // Array of {name, email, phone} objects
   appliedDate      DateTime?            @map("applied_date") @db.Date
   expectedResponse DateTime?            @map("expected_response") @db.Date
   salary           String?

@@ -43,6 +43,7 @@ import {
   Send,
   Eye,
   MessageSquare,
+  Phone,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
@@ -69,6 +70,12 @@ interface CareerActivity {
   project?: { id: string; name: string };
 }
 
+interface Contact {
+  name: string;
+  email?: string;
+  phone?: string;
+}
+
 interface JobApplication {
   id: string;
   company: string;
@@ -77,6 +84,7 @@ interface JobApplication {
   status: string;
   contactName?: string;
   contactEmail?: string;
+  contacts?: Contact[];
   appliedDate?: string;
   expectedResponse?: string;
   salary?: string;
@@ -131,14 +139,14 @@ const PIPELINE_STAGES = [
 ] as const;
 
 const APPLICATION_STATUSES = [
-  { value: 'draft', label: 'Draft', icon: FileText, color: 'text-gray-500', bgColor: 'bg-gray-100' },
-  { value: 'applied', label: 'Applied', icon: Send, color: 'text-blue-500', bgColor: 'bg-blue-100' },
-  { value: 'screening', label: 'Screening', icon: Eye, color: 'text-purple-500', bgColor: 'bg-purple-100' },
-  { value: 'interview', label: 'Interview', icon: MessageSquare, color: 'text-yellow-500', bgColor: 'bg-yellow-100' },
-  { value: 'offer', label: 'Offer', icon: CheckCircle2, color: 'text-green-500', bgColor: 'bg-green-100' },
-  { value: 'rejected', label: 'Rejected', icon: XCircle, color: 'text-red-500', bgColor: 'bg-red-100' },
-  { value: 'withdrawn', label: 'Withdrawn', icon: AlertCircle, color: 'text-orange-500', bgColor: 'bg-orange-100' },
-  { value: 'accepted', label: 'Accepted', icon: CheckCircle2, color: 'text-emerald-500', bgColor: 'bg-emerald-100' },
+  { value: 'draft', label: 'Draft', icon: FileText, color: 'text-gray-500 dark:text-gray-400', bgColor: 'bg-gray-500/10' },
+  { value: 'applied', label: 'Applied', icon: Send, color: 'text-blue-500 dark:text-blue-400', bgColor: 'bg-blue-500/10' },
+  { value: 'screening', label: 'Screening', icon: Eye, color: 'text-purple-500 dark:text-purple-400', bgColor: 'bg-purple-500/10' },
+  { value: 'interview', label: 'Interview', icon: MessageSquare, color: 'text-yellow-500 dark:text-yellow-400', bgColor: 'bg-yellow-500/10' },
+  { value: 'offer', label: 'Offer', icon: CheckCircle2, color: 'text-green-500 dark:text-green-400', bgColor: 'bg-green-500/10' },
+  { value: 'rejected', label: 'Rejected', icon: XCircle, color: 'text-red-500 dark:text-red-400', bgColor: 'bg-red-500/10' },
+  { value: 'withdrawn', label: 'Withdrawn', icon: AlertCircle, color: 'text-orange-500 dark:text-orange-400', bgColor: 'bg-orange-500/10' },
+  { value: 'accepted', label: 'Accepted', icon: CheckCircle2, color: 'text-emerald-500 dark:text-emerald-400', bgColor: 'bg-emerald-500/10' },
 ] as const;
 
 export default function CareerPage() {
@@ -893,7 +901,42 @@ function ApplicationCard({
               )}
             </div>
 
-            {(application.contactName || application.contactEmail) && (
+            {/* Display multiple contacts */}
+            {application.contacts && application.contacts.length > 0 ? (
+              <div className="mt-2 space-y-1">
+                {application.contacts.map((contact, idx) => (
+                  <div key={idx} className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                    {contact.name && (
+                      <span className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {contact.name}
+                      </span>
+                    )}
+                    {contact.email && (
+                      <a
+                        href={`mailto:${contact.email}`}
+                        className="flex items-center gap-1 text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Mail className="h-3 w-3" />
+                        {contact.email}
+                      </a>
+                    )}
+                    {contact.phone && (
+                      <a
+                        href={`tel:${contact.phone}`}
+                        className="flex items-center gap-1 text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Phone className="h-3 w-3" />
+                        {contact.phone}
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (application.contactName || application.contactEmail) && (
+              // Fallback for legacy single contact
               <div className="flex flex-wrap gap-3 mt-2 text-sm text-muted-foreground">
                 {application.contactName && (
                   <span className="flex items-center gap-1">
@@ -905,6 +948,7 @@ function ApplicationCard({
                   <a
                     href={`mailto:${application.contactEmail}`}
                     className="flex items-center gap-1 text-primary hover:underline"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <Mail className="h-3 w-3" />
                     {application.contactEmail}
@@ -1218,13 +1262,23 @@ function ApplicationModal({
   onClose: () => void;
   onSave: (data: Partial<JobApplication>) => void;
 }) {
+  // Initialize contacts from application data, migrating legacy fields if needed
+  const initializeContacts = (): Contact[] => {
+    if (application?.contacts && Array.isArray(application.contacts) && application.contacts.length > 0) {
+      return application.contacts;
+    }
+    // Migrate legacy single contact fields
+    if (application?.contactName || application?.contactEmail) {
+      return [{ name: application.contactName || '', email: application.contactEmail || '', phone: '' }];
+    }
+    return [{ name: '', email: '', phone: '' }];
+  };
+
   const [formData, setFormData] = React.useState({
     company: application?.company || '',
     roleTitle: application?.roleTitle || '',
     link: application?.link || '',
     status: application?.status || 'draft',
-    contactName: application?.contactName || '',
-    contactEmail: application?.contactEmail || '',
     appliedDate: application?.appliedDate
       ? new Date(application.appliedDate).toISOString().split('T')[0]
       : '',
@@ -1235,21 +1289,43 @@ function ApplicationModal({
     location: application?.location || '',
     notes: application?.notes || '',
   });
+  const [contacts, setContacts] = React.useState<Contact[]>(initializeContacts);
   const [saving, setSaving] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState(0);
 
-  const tabs = ['Basic', 'Contact', 'Details'];
+  const tabs = ['Basic', 'Contacts', 'Details'];
+
+  const addContact = () => {
+    setContacts([...contacts, { name: '', email: '', phone: '' }]);
+  };
+
+  const removeContact = (index: number) => {
+    if (contacts.length > 1) {
+      setContacts(contacts.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateContact = (index: number, field: keyof Contact, value: string) => {
+    setContacts(contacts.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+
+    // Filter out empty contacts
+    const validContacts = contacts.filter(c => c.name || c.email || c.phone);
+
     await onSave({
       company: formData.company,
       roleTitle: formData.roleTitle,
       link: formData.link || undefined,
       status: formData.status,
-      contactName: formData.contactName || undefined,
-      contactEmail: formData.contactEmail || undefined,
+      // Keep legacy fields for backward compatibility (use first contact)
+      contactName: validContacts[0]?.name || undefined,
+      contactEmail: validContacts[0]?.email || undefined,
+      // Store all contacts in the new field
+      contacts: validContacts.length > 0 ? validContacts : undefined,
       appliedDate: formData.appliedDate ? new Date(formData.appliedDate).toISOString() : undefined,
       expectedResponse: formData.expectedResponse ? new Date(formData.expectedResponse).toISOString() : undefined,
       salary: formData.salary || undefined,
@@ -1337,29 +1413,68 @@ function ApplicationModal({
             </>
           )}
 
-          {/* Contact Tab */}
+          {/* Contacts Tab */}
           {activeTab === 1 && (
             <>
-              <div>
-                <label className="text-sm font-medium">Contact Name</label>
-                <Input
-                  value={formData.contactName}
-                  onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                  placeholder="Recruiter or hiring manager name"
-                />
+              <div className="space-y-4">
+                {contacts.map((contact, index) => (
+                  <div key={index} className="p-3 border rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Contact {index + 1}</span>
+                      {contacts.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeContact(index)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Name</label>
+                      <Input
+                        value={contact.name}
+                        onChange={(e) => updateContact(index, 'name', e.target.value)}
+                        placeholder="Contact person name"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-muted-foreground">Email</label>
+                        <Input
+                          type="email"
+                          value={contact.email || ''}
+                          onChange={(e) => updateContact(index, 'email', e.target.value)}
+                          placeholder="email@example.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Phone</label>
+                        <Input
+                          type="tel"
+                          value={contact.phone || ''}
+                          onChange={(e) => updateContact(index, 'phone', e.target.value)}
+                          placeholder="+62 812..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addContact}
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Contact Person
+                </Button>
               </div>
 
-              <div>
-                <label className="text-sm font-medium">Contact Email</label>
-                <Input
-                  type="email"
-                  value={formData.contactEmail}
-                  onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                  placeholder="email@example.com"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                 <div>
                   <label className="text-sm font-medium">Applied Date</label>
                   <Input
