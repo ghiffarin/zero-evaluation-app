@@ -67,6 +67,7 @@ export const aggregateDailyData = async (req: Request, res: Response): Promise<v
       wellnessEntry,
       financialTransactions,
       careerActivities,
+      careerActivityLogs,
       mastersPrepSessions,
       journalEntries,
       reflectionEntries,
@@ -100,10 +101,21 @@ export const aggregateDailyData = async (req: Request, res: Response): Promise<v
         where: { userId, date: targetDate },
         select: { amountIdr: true, direction: true, category: true },
       }),
-      // Career Activities
+      // Career Activities (activities created on this date)
       prisma.careerActivity.findMany({
         where: { userId, date: targetDate },
-        select: { timeSpentMin: true, activityType: true },
+        select: { id: true, timeSpentMin: true, activityType: true, targetEntity: true },
+      }),
+      // Career Activity Logs (logged work on this specific date)
+      prisma.careerActivityLog.findMany({
+        where: { userId, date: targetDate },
+        select: {
+          timeSpentMin: true,
+          progress: true,
+          activity: {
+            select: { activityType: true, targetEntity: true },
+          },
+        },
       }),
       // Masters Prep Sessions
       prisma.mastersPrepSession.findMany({
@@ -127,7 +139,14 @@ export const aggregateDailyData = async (req: Request, res: Response): Promise<v
     const skillMinutes = skillSessions.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0);
     const bookMinutes = bookSessions.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0);
     const mastersPrepMinutes = mastersPrepSessions.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0);
-    const careerMinutes = careerActivities.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0);
+
+    // Career minutes comes from activity logs (time spent on this specific date)
+    // Activity logs track daily progress, so this gives us the actual work done on this date
+    const careerLogMinutes = careerActivityLogs.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0);
+    // Also include direct activity time for activities created on this date without logs
+    const careerActivityMinutes = careerActivities.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0);
+    // Total career minutes = logs for this date + activities without logs created on this date
+    const careerMinutes = careerLogMinutes > 0 ? careerLogMinutes : careerActivityMinutes;
 
     const totalLearningMinutes = ieltsMinutes + skillMinutes + bookMinutes + mastersPrepMinutes;
     const totalWorkMinutes = careerMinutes;
@@ -201,8 +220,12 @@ export const aggregateDailyData = async (req: Request, res: Response): Promise<v
         },
         career: {
           activities: careerActivities.length,
+          logs: careerActivityLogs.length,
           minutes: careerMinutes,
+          logMinutes: careerLogMinutes,
+          activityMinutes: careerActivityMinutes,
           details: careerActivities,
+          logDetails: careerActivityLogs,
         },
         mastersPrep: {
           sessions: mastersPrepSessions.length,
@@ -251,7 +274,7 @@ export const aggregateDailyData = async (req: Request, res: Response): Promise<v
         workouts: workoutSessions.length > 0,
         wellness: !!wellnessEntry,
         financial: financialTransactions.length > 0,
-        career: careerActivities.length > 0,
+        career: careerActivities.length > 0 || careerActivityLogs.length > 0,
         mastersPrep: mastersPrepSessions.length > 0,
         journals: journalEntries.length > 0,
         reflections: reflectionEntries.length > 0,

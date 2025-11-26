@@ -74,15 +74,9 @@ export const createActivityLog = async (req: Request, res: Response): Promise<vo
       },
     });
 
-    // Update activity's total time spent
-    if (timeSpentMin) {
-      await prisma.careerActivity.update({
-        where: { id: activityId },
-        data: {
-          timeSpentMin: (activity.timeSpentMin || 0) + timeSpentMin,
-        },
-      });
-    }
+    // Note: We don't update the parent activity's timeSpentMin anymore.
+    // The activity's total time is calculated dynamically from all its logs.
+    // This ensures the daily log system shows time on the correct date.
 
     sendSuccess(res, log, 201);
   } catch (error) {
@@ -107,21 +101,8 @@ export const updateActivityLog = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    // If time spent changed, update the activity total
-    if (timeSpentMin !== undefined && timeSpentMin !== existingLog.timeSpentMin) {
-      const timeDiff = timeSpentMin - (existingLog.timeSpentMin || 0);
-      const activity = await prisma.careerActivity.findUnique({
-        where: { id: existingLog.activityId },
-      });
-      if (activity) {
-        await prisma.careerActivity.update({
-          where: { id: existingLog.activityId },
-          data: {
-            timeSpentMin: Math.max(0, (activity.timeSpentMin || 0) + timeDiff),
-          },
-        });
-      }
-    }
+    // Note: We no longer update the parent activity's timeSpentMin.
+    // Time is tracked per log date for accurate daily aggregation.
 
     const log = await prisma.careerActivityLog.update({
       where: { id: logId },
@@ -157,20 +138,8 @@ export const deleteActivityLog = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Subtract time from activity total
-    if (existingLog.timeSpentMin) {
-      const activity = await prisma.careerActivity.findUnique({
-        where: { id: existingLog.activityId },
-      });
-      if (activity) {
-        await prisma.careerActivity.update({
-          where: { id: existingLog.activityId },
-          data: {
-            timeSpentMin: Math.max(0, (activity.timeSpentMin || 0) - existingLog.timeSpentMin),
-          },
-        });
-      }
-    }
+    // Note: We no longer update the parent activity's timeSpentMin.
+    // Time is tracked per log date for accurate daily aggregation.
 
     await prisma.careerActivityLog.delete({
       where: { id: logId },
