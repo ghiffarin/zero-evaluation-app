@@ -142,6 +142,7 @@ interface Goal {
   category: string;
   status: string;
   targetValue: number | null;
+  currentValue: number | null;
   dueDate: string | null;
 }
 
@@ -554,7 +555,7 @@ export default function DashboardPage() {
               <GoalCard
                 key={goal.id}
                 title={goal.title}
-                progress={0}
+                progress={calculateGoalProgress(goal.currentValue, goal.targetValue)}
                 dueDate={goal.dueDate ? formatDate(new Date(goal.dueDate), { month: 'short', year: 'numeric' }) : 'No deadline'}
                 category={goal.category}
               />
@@ -567,6 +568,12 @@ export default function DashboardPage() {
 }
 
 // Helper functions and components
+function calculateGoalProgress(currentValue: number | null, targetValue: number | null): number {
+  if (!targetValue || targetValue === 0) return 0;
+  const current = currentValue || 0;
+  return Math.min(Math.round((current / targetValue) * 100), 100);
+}
+
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return 'morning';
