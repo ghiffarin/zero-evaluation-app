@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
   // Compress responses
   compress: true,
 
+  // Output standalone for Docker deployment
+  output: 'standalone',
+
   // Optimize package imports - tree-shake large libraries
   experimental: {
     optimizePackageImports: [

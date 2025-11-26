@@ -31,8 +31,13 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
 
-# Expose port
-EXPOSE 8080
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 expressjs
+USER expressjs
 
-# Start the server
-CMD ["node", "dist/server.js"]
+# Expose port (configured via PORT env)
+EXPOSE 3001
+
+# Run migrations and start server
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]

@@ -1,0 +1,15 @@
+{
+  "name": "zero-eval-packages",
+  "private": true,
+  "workspaces": [
+    "core",
+    "create-zero-eval",
+    "zero-eval-cli"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "build:core": "npm run build -w @zero-eval/core",
+    "build:create": "npm run build -w create-zero-eval",
+    "build:cli": "npm run build -w zero-eval-cli"
+  }
+}
