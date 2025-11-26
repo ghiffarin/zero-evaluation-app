@@ -263,6 +263,15 @@ export const api = {
       create: (data: unknown) => api.post<unknown>('/career/activities', data),
       update: (id: string, data: unknown) => api.put<unknown>(`/career/activities/${id}`, data),
       delete: (id: string) => api.delete<unknown>(`/career/activities/${id}`),
+      // Activity logs (daily progress entries)
+      logs: {
+        list: (activityId: string) => api.get<unknown>(`/career/activities/${activityId}/logs`),
+        create: (activityId: string, data: unknown) =>
+          api.post<unknown>(`/career/activities/${activityId}/logs`, data),
+        update: (logId: string, data: unknown) =>
+          api.put<unknown>(`/career/logs/${logId}`, data),
+        delete: (logId: string) => api.delete<unknown>(`/career/logs/${logId}`),
+      },
     },
     applications: {
       list: (params?: { page?: number; limit?: number; status?: string }) =>

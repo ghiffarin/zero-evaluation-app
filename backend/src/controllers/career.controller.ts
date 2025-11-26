@@ -6,7 +6,7 @@ import { createCrudController } from '../services/crud.service.js';
 // Career Activities
 const activityCrud = createCrudController({
   model: 'careerActivity',
-  include: { project: true },
+  include: { project: true, logs: { orderBy: { date: 'desc' } } },
   orderBy: { date: 'desc' },
   searchFields: ['targetEntity', 'description', 'outputSummary'],
 });
@@ -16,6 +16,172 @@ export const getAllCareerActivities = activityCrud.getAll;
 export const getCareerActivityById = activityCrud.getOne;
 export const updateCareerActivity = activityCrud.update;
 export const deleteCareerActivity = activityCrud.delete;
+
+// Activity Logs
+export const getActivityLogs = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { activityId } = req.params;
+
+    // Verify the activity belongs to the user
+    const activity = await prisma.careerActivity.findFirst({
+      where: { id: activityId, userId },
+    });
+
+    if (!activity) {
+      sendError(res, 'Activity not found', 404);
+      return;
+    }
+
+    const logs = await prisma.careerActivityLog.findMany({
+      where: { activityId, userId },
+      orderBy: { date: 'desc' },
+    });
+
+    sendSuccess(res, logs);
+  } catch (error) {
+    console.error('Get activity logs error:', error);
+    sendError(res, 'Failed to fetch activity logs', 500);
+  }
+};
+
+export const createActivityLog = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { activityId } = req.params;
+    const { date, timeSpentMin, progress, outcome, nextStep, notes } = req.body;
+
+    // Verify the activity belongs to the user
+    const activity = await prisma.careerActivity.findFirst({
+      where: { id: activityId, userId },
+    });
+
+    if (!activity) {
+      sendError(res, 'Activity not found', 404);
+      return;
+    }
+
+    const log = await prisma.careerActivityLog.create({
+      data: {
+        userId,
+        activityId,
+        date: date ? new Date(date) : new Date(),
+        timeSpentMin,
+        progress,
+        outcome,
+        nextStep,
+        notes,
+      },
+    });
+
+    // Update activity's total time spent
+    if (timeSpentMin) {
+      await prisma.careerActivity.update({
+        where: { id: activityId },
+        data: {
+          timeSpentMin: (activity.timeSpentMin || 0) + timeSpentMin,
+        },
+      });
+    }
+
+    sendSuccess(res, log, 201);
+  } catch (error) {
+    console.error('Create activity log error:', error);
+    sendError(res, 'Failed to create activity log', 500);
+  }
+};
+
+export const updateActivityLog = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { logId } = req.params;
+    const { date, timeSpentMin, progress, outcome, nextStep, notes } = req.body;
+
+    // Verify the log belongs to the user
+    const existingLog = await prisma.careerActivityLog.findFirst({
+      where: { id: logId, userId },
+    });
+
+    if (!existingLog) {
+      sendError(res, 'Log not found', 404);
+      return;
+    }
+
+    // If time spent changed, update the activity total
+    if (timeSpentMin !== undefined && timeSpentMin !== existingLog.timeSpentMin) {
+      const timeDiff = timeSpentMin - (existingLog.timeSpentMin || 0);
+      const activity = await prisma.careerActivity.findUnique({
+        where: { id: existingLog.activityId },
+      });
+      if (activity) {
+        await prisma.careerActivity.update({
+          where: { id: existingLog.activityId },
+          data: {
+            timeSpentMin: Math.max(0, (activity.timeSpentMin || 0) + timeDiff),
+          },
+        });
+      }
+    }
+
+    const log = await prisma.careerActivityLog.update({
+      where: { id: logId },
+      data: {
+        date: date ? new Date(date) : undefined,
+        timeSpentMin,
+        progress,
+        outcome,
+        nextStep,
+        notes,
+      },
+    });
+
+    sendSuccess(res, log);
+  } catch (error) {
+    console.error('Update activity log error:', error);
+    sendError(res, 'Failed to update activity log', 500);
+  }
+};
+
+export const deleteActivityLog = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { logId } = req.params;
+
+    // Verify the log belongs to the user
+    const existingLog = await prisma.careerActivityLog.findFirst({
+      where: { id: logId, userId },
+    });
+
+    if (!existingLog) {
+      sendError(res, 'Log not found', 404);
+      return;
+    }
+
+    // Subtract time from activity total
+    if (existingLog.timeSpentMin) {
+      const activity = await prisma.careerActivity.findUnique({
+        where: { id: existingLog.activityId },
+      });
+      if (activity) {
+        await prisma.careerActivity.update({
+          where: { id: existingLog.activityId },
+          data: {
+            timeSpentMin: Math.max(0, (activity.timeSpentMin || 0) - existingLog.timeSpentMin),
+          },
+        });
+      }
+    }
+
+    await prisma.careerActivityLog.delete({
+      where: { id: logId },
+    });
+
+    sendSuccess(res, { message: 'Log deleted successfully' });
+  } catch (error) {
+    console.error('Delete activity log error:', error);
+    sendError(res, 'Failed to delete activity log', 500);
+  }
+};
 
 // Job Applications
 const applicationCrud = createCrudController({

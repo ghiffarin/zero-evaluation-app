@@ -6,6 +6,10 @@ import {
   getCareerActivityById,
   updateCareerActivity,
   deleteCareerActivity,
+  getActivityLogs,
+  createActivityLog,
+  updateActivityLog,
+  deleteActivityLog,
   createJobApplication,
   getAllJobApplications,
   getJobApplicationById,
@@ -28,6 +32,12 @@ router.post('/activities', createCareerActivity);
 router.get('/activities/:id', getCareerActivityById);
 router.put('/activities/:id', updateCareerActivity);
 router.delete('/activities/:id', deleteCareerActivity);
+
+// Activity Logs (daily progress logs for activities)
+router.get('/activities/:activityId/logs', getActivityLogs);
+router.post('/activities/:activityId/logs', createActivityLog);
+router.put('/logs/:logId', updateActivityLog);
+router.delete('/logs/:logId', deleteActivityLog);
 
 // Job Applications
 router.get('/applications/pipeline', getApplicationPipeline);

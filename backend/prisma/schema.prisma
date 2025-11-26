@@ -40,6 +40,7 @@ model User {
   financialTransactions FinancialTransaction[]
   reflectionEntries     ReflectionEntry[]
   careerActivities      CareerActivity[]
+  careerActivityLogs    CareerActivityLog[]
   jobApplications       JobApplication[]
   mastersPrepItems      MastersPrepItem[]
   mastersPrepSessions   MastersPrepSession[]
@@ -720,10 +721,30 @@ model CareerActivity {
   createdAt     DateTime             @default(now()) @map("created_at")
 
   // Relations
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  user    User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project?             @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  logs    CareerActivityLog[]
 
   @@map("career_activities")
+}
+
+model CareerActivityLog {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  activityId   String   @map("activity_id")
+  date         DateTime @db.Date
+  timeSpentMin Int?     @map("time_spent_min")
+  progress     String?  @db.Text // What was accomplished
+  outcome      String?  @db.Text // Results/feedback received
+  nextStep     String?  @map("next_step") @db.Text
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity CareerActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@map("career_activity_logs")
 }
 
 enum CareerActivityType {

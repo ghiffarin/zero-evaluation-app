@@ -44,12 +44,26 @@ import {
   Eye,
   MessageSquare,
   Phone,
+  History,
+  PlusCircle,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
 import { formatDate, toLocalDateString } from '@/lib/utils';
 
 // Types
+interface ActivityLog {
+  id: string;
+  activityId: string;
+  date: string;
+  timeSpentMin?: number;
+  progress?: string;
+  outcome?: string;
+  nextStep?: string;
+  notes?: string;
+  createdAt: string;
+}
+
 interface CareerActivity {
   id: string;
   date: string;
@@ -68,6 +82,7 @@ interface CareerActivity {
   nextStep?: string;
   notes?: string;
   project?: { id: string; name: string };
+  logs?: ActivityLog[];
 }
 
 interface Contact {
@@ -160,8 +175,10 @@ export default function CareerPage() {
   // Modal states
   const [showActivityModal, setShowActivityModal] = React.useState(false);
   const [showApplicationModal, setShowApplicationModal] = React.useState(false);
+  const [showLogModal, setShowLogModal] = React.useState(false);
   const [editingActivity, setEditingActivity] = React.useState<CareerActivity | null>(null);
   const [editingApplication, setEditingApplication] = React.useState<JobApplication | null>(null);
+  const [logActivity, setLogActivity] = React.useState<CareerActivity | null>(null);
 
   // Filters & View
   const [activeTab, setActiveTab] = React.useState<'activities' | 'applications'>('activities');
@@ -243,6 +260,34 @@ export default function CareerPage() {
       refreshStats();
     } catch (err) {
       console.error('Failed to delete activity:', err);
+    }
+  };
+
+  // Activity Log CRUD
+  const handleCreateLog = async (activityId: string, data: Partial<ActivityLog>) => {
+    try {
+      await api.career.activities.logs.create(activityId, data);
+      // Refresh the activities to get updated logs
+      const res = await api.career.activities.list({ limit: 100 });
+      setActivities((res as any).data || []);
+      setShowLogModal(false);
+      setLogActivity(null);
+      refreshStats();
+    } catch (err) {
+      console.error('Failed to create log:', err);
+    }
+  };
+
+  const handleDeleteLog = async (logId: string) => {
+    if (!confirm('Delete this log entry?')) return;
+    try {
+      await api.career.activities.logs.delete(logId);
+      // Refresh the activities to get updated logs
+      const res = await api.career.activities.list({ limit: 100 });
+      setActivities((res as any).data || []);
+      refreshStats();
+    } catch (err) {
+      console.error('Failed to delete log:', err);
     }
   };
 
@@ -511,6 +556,12 @@ export default function CareerPage() {
                     setShowActivityModal(true);
                   }}
                   onDelete={() => handleDeleteActivity(activity.id)}
+                  onAddLog={() => {
+                    setLogActivity(activity);
+                    setShowLogModal(true);
+                  }}
+                  onDeleteLog={handleDeleteLog}
+                  formatMinutes={formatMinutes}
                 />
               ))}
             </div>
@@ -673,6 +724,18 @@ export default function CareerPage() {
           }}
         />
       )}
+
+      {/* Activity Log Modal */}
+      {showLogModal && logActivity && (
+        <ActivityLogModal
+          activity={logActivity}
+          onClose={() => {
+            setShowLogModal(false);
+            setLogActivity(null);
+          }}
+          onSave={(data) => handleCreateLog(logActivity.id, data)}
+        />
+      )}
     </PageContainer>
   );
 }
@@ -722,12 +785,18 @@ function ActivityCard({
   onToggleExpand,
   onEdit,
   onDelete,
+  onAddLog,
+  onDeleteLog,
+  formatMinutes,
 }: {
   activity: CareerActivity;
   isExpanded: boolean;
   onToggleExpand: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onAddLog: () => void;
+  onDeleteLog: (logId: string) => void;
+  formatMinutes: (minutes: number) => string;
 }) {
   const typeInfo = ACTIVITY_TYPES.find((t) => t.value === activity.activityType);
   const TypeIcon = typeInfo?.icon || Briefcase;
@@ -755,14 +824,20 @@ function ActivityCard({
                   P{activity.priority}
                 </Badge>
               )}
+              {activity.logs && activity.logs.length > 0 && (
+                <Badge variant="neutral" className="text-xs flex items-center gap-1">
+                  <History className="h-3 w-3" />
+                  {activity.logs.length} log{activity.logs.length !== 1 ? 's' : ''}
+                </Badge>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-3 mt-2 text-sm text-muted-foreground">
               <span>{formatDate(new Date(activity.date), { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-              {activity.timeSpentMin && (
+              {activity.timeSpentMin && activity.timeSpentMin > 0 && (
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  {activity.timeSpentMin}min
+                  {formatMinutes(activity.timeSpentMin)}
                 </span>
               )}
               {activity.careerImpact && (
@@ -819,10 +894,83 @@ function ActivityCard({
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">{activity.notes}</p>
                   </div>
                 )}
+
+                {/* Activity Logs Section */}
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <History className="h-4 w-4" />
+                      Activity Logs
+                    </h4>
+                    <Button variant="outline" size="sm" onClick={onAddLog}>
+                      <PlusCircle className="h-4 w-4 mr-1" />
+                      Add Log
+                    </Button>
+                  </div>
+
+                  {activity.logs && activity.logs.length > 0 ? (
+                    <div className="space-y-2">
+                      {activity.logs.map((log) => (
+                        <div key={log.id} className="p-3 bg-muted/50 rounded-lg">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 text-sm">
+                                <Calendar className="h-3 w-3 text-muted-foreground" />
+                                <span className="font-medium">
+                                  {formatDate(new Date(log.date), { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </span>
+                                {log.timeSpentMin && log.timeSpentMin > 0 && (
+                                  <span className="text-muted-foreground flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {formatMinutes(log.timeSpentMin)}
+                                  </span>
+                                )}
+                              </div>
+                              {log.progress && (
+                                <p className="text-sm mt-1">
+                                  <span className="text-muted-foreground">Progress:</span> {log.progress}
+                                </p>
+                              )}
+                              {log.outcome && (
+                                <p className="text-sm mt-1">
+                                  <span className="text-muted-foreground">Outcome:</span> {log.outcome}
+                                </p>
+                              )}
+                              {log.nextStep && (
+                                <p className="text-sm mt-1 flex items-center gap-1">
+                                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                  {log.nextStep}
+                                </p>
+                              )}
+                              {log.notes && (
+                                <p className="text-xs text-muted-foreground mt-1 italic">{log.notes}</p>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onDeleteLog(log.id)}
+                              className="ml-2"
+                            >
+                              <Trash2 className="h-3 w-3 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No logs yet. Add your first daily log!
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>
           <div className="flex gap-1 ml-2">
+            <Button variant="ghost" size="sm" onClick={onAddLog} title="Add Log">
+              <PlusCircle className="h-4 w-4 text-primary" />
+            </Button>
             <Button variant="ghost" size="sm" onClick={onToggleExpand}>
               {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
@@ -1535,6 +1683,134 @@ function ApplicationModal({
             <Button type="submit" disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {application ? 'Update' : 'Add'} Application
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ActivityLogModal({
+  activity,
+  onClose,
+  onSave,
+}: {
+  activity: CareerActivity;
+  onClose: () => void;
+  onSave: (data: Partial<ActivityLog>) => void;
+}) {
+  const [formData, setFormData] = React.useState({
+    date: toLocalDateString(),
+    timeSpentMin: '',
+    progress: '',
+    outcome: '',
+    nextStep: '',
+    notes: '',
+  });
+  const [saving, setSaving] = React.useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    await onSave({
+      date: new Date(formData.date).toISOString(),
+      timeSpentMin: formData.timeSpentMin ? Number(formData.timeSpentMin) : undefined,
+      progress: formData.progress || undefined,
+      outcome: formData.outcome || undefined,
+      nextStep: formData.nextStep || undefined,
+      notes: formData.notes || undefined,
+    });
+    setSaving(false);
+  };
+
+  const typeInfo = ACTIVITY_TYPES.find((t) => t.value === activity.activityType);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+      <div className="bg-background rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto m-4">
+        <div className="flex items-center justify-between p-4 border-b">
+          <div>
+            <h2 className="text-lg font-semibold">Add Activity Log</h2>
+            <p className="text-sm text-muted-foreground">
+              {typeInfo?.label || activity.activityType}
+              {activity.targetEntity && ` - ${activity.targetEntity}`}
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">Date *</label>
+              <Input
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Time Spent (min)</label>
+              <Input
+                type="number"
+                value={formData.timeSpentMin}
+                onChange={(e) => setFormData({ ...formData, timeSpentMin: e.target.value })}
+                placeholder="30"
+                min="0"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Progress</label>
+            <textarea
+              value={formData.progress}
+              onChange={(e) => setFormData({ ...formData, progress: e.target.value })}
+              className="w-full min-h-[80px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+              placeholder="What did you accomplish today?"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Outcome / Results</label>
+            <textarea
+              value={formData.outcome}
+              onChange={(e) => setFormData({ ...formData, outcome: e.target.value })}
+              className="w-full min-h-[60px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+              placeholder="Any feedback, results, or milestones reached?"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Next Step</label>
+            <Input
+              value={formData.nextStep}
+              onChange={(e) => setFormData({ ...formData, nextStep: e.target.value })}
+              placeholder="What's the next action?"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Notes</label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              className="w-full min-h-[60px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+              placeholder="Additional thoughts or learnings..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Add Log
             </Button>
           </div>
         </form>
