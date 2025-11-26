@@ -9,6 +9,11 @@ import {
   addSessionToPrepItem,
   getMastersPrepStats,
   getReadinessBreakdown,
+  createNote,
+  getAllNotes,
+  getNoteById,
+  updateNote,
+  deleteNote,
 } from '../controllers/masters-prep.controller.js';
 
 const router = Router();
@@ -18,6 +23,14 @@ router.use(authenticate);
 router.get('/stats', getMastersPrepStats);
 router.get('/readiness', getReadinessBreakdown);
 
+// Quick Notes
+router.get('/notes', getAllNotes);
+router.post('/notes', createNote);
+router.get('/notes/:id', getNoteById);
+router.put('/notes/:id', updateNote);
+router.delete('/notes/:id', deleteNote);
+
+// Prep Items
 router.get('/', getAllPrepItems);
 router.post('/', createPrepItem);
 router.get('/:id', getPrepItemById);

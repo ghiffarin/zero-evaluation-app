@@ -207,3 +207,16 @@ export const getReadinessBreakdown = async (req: Request, res: Response): Promis
     sendError(res, 'Failed to fetch readiness breakdown', 500);
   }
 };
+
+// Quick Notes CRUD
+const noteCrud = createCrudController({
+  model: 'mastersPrepNote',
+  orderBy: { createdAt: 'desc' },
+  searchFields: ['title', 'description'],
+});
+
+export const createNote = noteCrud.create;
+export const getAllNotes = noteCrud.getAll;
+export const getNoteById = noteCrud.getOne;
+export const updateNote = noteCrud.update;
+export const deleteNote = noteCrud.delete;

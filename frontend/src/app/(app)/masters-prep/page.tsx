@@ -44,6 +44,8 @@ import {
   Timer,
   TrendingUp,
   BarChart3,
+  StickyNote,
+  Link,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
@@ -111,6 +113,14 @@ interface ReadinessBreakdown {
   };
 }
 
+interface QuickNote {
+  id: string;
+  title: string;
+  description?: string;
+  link?: string;
+  createdAt: string;
+}
+
 const CATEGORIES = [
   { value: 'ielts', label: 'IELTS', icon: BookOpen },
   { value: 'journal', label: 'Journal/Publication', icon: FileText },
@@ -140,20 +150,24 @@ export default function MastersPrepPage() {
   const [items, setItems] = React.useState<PrepItem[]>([]);
   const [stats, setStats] = React.useState<PrepStats | null>(null);
   const [readinessBreakdown, setReadinessBreakdown] = React.useState<ReadinessBreakdown | null>(null);
+  const [notes, setNotes] = React.useState<QuickNote[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   // Modal states
   const [showItemModal, setShowItemModal] = React.useState(false);
   const [showSessionModal, setShowSessionModal] = React.useState(false);
+  const [showNoteModal, setShowNoteModal] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<PrepItem | null>(null);
+  const [editingNote, setEditingNote] = React.useState<QuickNote | null>(null);
   const [sessionItemId, setSessionItemId] = React.useState<string | null>(null);
 
   // Filters & View
-  const [activeTab, setActiveTab] = React.useState<'items' | 'readiness'>('items');
+  const [activeTab, setActiveTab] = React.useState<'items' | 'readiness' | 'notes'>('items');
   const [filterCategory, setFilterCategory] = React.useState<string>('all');
   const [filterStatus, setFilterStatus] = React.useState<string>('all');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [expandedItem, setExpandedItem] = React.useState<string | null>(null);
+  const [noteSearchQuery, setNoteSearchQuery] = React.useState('');
 
   // Fetch data
   React.useEffect(() => {
@@ -162,14 +176,16 @@ export default function MastersPrepPage() {
     async function fetchData() {
       try {
         setLoading(true);
-        const [itemsRes, statsRes, readinessRes] = await Promise.all([
+        const [itemsRes, statsRes, readinessRes, notesRes] = await Promise.all([
           api.mastersPrep.list({ limit: 100 }),
           api.mastersPrep.stats(),
           api.mastersPrep.readiness(),
+          api.mastersPrep.notes.list({ limit: 100 }),
         ]);
         setItems((itemsRes as any).data || []);
         setStats((statsRes as any).data || null);
         setReadinessBreakdown((readinessRes as any).data || null);
+        setNotes((notesRes as any).data || []);
       } catch (err) {
         console.error('Failed to fetch masters prep data:', err);
       } finally {
@@ -183,14 +199,16 @@ export default function MastersPrepPage() {
   // Refresh stats
   const refreshData = async () => {
     try {
-      const [itemsRes, statsRes, readinessRes] = await Promise.all([
+      const [itemsRes, statsRes, readinessRes, notesRes] = await Promise.all([
         api.mastersPrep.list({ limit: 100 }),
         api.mastersPrep.stats(),
         api.mastersPrep.readiness(),
+        api.mastersPrep.notes.list({ limit: 100 }),
       ]);
       setItems((itemsRes as any).data || []);
       setStats((statsRes as any).data || null);
       setReadinessBreakdown((readinessRes as any).data || null);
+      setNotes((notesRes as any).data || []);
     } catch (err) {
       console.error('Failed to refresh data:', err);
     }
@@ -242,6 +260,38 @@ export default function MastersPrepPage() {
     }
   };
 
+  // Note CRUD handlers
+  const handleCreateNote = async (data: Partial<QuickNote>) => {
+    try {
+      const res = await api.mastersPrep.notes.create(data);
+      setNotes((prev) => [(res as any).data, ...prev]);
+      setShowNoteModal(false);
+    } catch (err) {
+      console.error('Failed to create note:', err);
+    }
+  };
+
+  const handleUpdateNote = async (id: string, data: Partial<QuickNote>) => {
+    try {
+      const res = await api.mastersPrep.notes.update(id, data);
+      setNotes((prev) => prev.map((n) => (n.id === id ? (res as any).data : n)));
+      setEditingNote(null);
+      setShowNoteModal(false);
+    } catch (err) {
+      console.error('Failed to update note:', err);
+    }
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this note?')) return;
+    try {
+      await api.mastersPrep.notes.delete(id);
+      setNotes((prev) => prev.filter((n) => n.id !== id));
+    } catch (err) {
+      console.error('Failed to delete note:', err);
+    }
+  };
+
   // Filter items
   const filteredItems = items.filter((item) => {
     const matchesCategory = filterCategory === 'all' || item.category === filterCategory;
@@ -252,6 +302,15 @@ export default function MastersPrepPage() {
       item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.subcategory?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesStatus && matchesSearch;
+  });
+
+  // Filter notes
+  const filteredNotes = notes.filter((note) => {
+    if (!noteSearchQuery) return true;
+    return (
+      note.title.toLowerCase().includes(noteSearchQuery.toLowerCase()) ||
+      note.description?.toLowerCase().includes(noteSearchQuery.toLowerCase())
+    );
   });
 
   // Format minutes to hours and minutes
@@ -288,15 +347,27 @@ export default function MastersPrepPage() {
         title="Master's Prep"
         description="Track your master's degree preparation progress"
         actions={
-          <Button
-            onClick={() => {
-              setEditingItem(null);
-              setShowItemModal(true);
-            }}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Prep Item
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditingNote(null);
+                setShowNoteModal(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Note
+            </Button>
+            <Button
+              onClick={() => {
+                setEditingItem(null);
+                setShowItemModal(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Prep Item
+            </Button>
+          </div>
         }
       />
 
@@ -419,6 +490,16 @@ export default function MastersPrepPage() {
           onClick={() => setActiveTab('readiness')}
         >
           Readiness by Category
+        </button>
+        <button
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'notes'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+          onClick={() => setActiveTab('notes')}
+        >
+          Quick Notes ({notes.length})
         </button>
       </div>
 
@@ -590,6 +671,101 @@ export default function MastersPrepPage() {
         </div>
       )}
 
+      {/* Notes Tab */}
+      {activeTab === 'notes' && (
+        <>
+          {/* Search */}
+          <div className="flex flex-col gap-4 mb-6 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search notes..."
+                value={noteSearchQuery}
+                onChange={(e) => setNoteSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          {/* Notes List */}
+          {filteredNotes.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <StickyNote className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  {notes.length === 0 ? 'No quick notes yet.' : 'No notes match your search.'}
+                </p>
+                {notes.length === 0 && (
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => {
+                      setEditingNote(null);
+                      setShowNoteModal(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Your First Note
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {filteredNotes.map((note) => (
+                <Card key={note.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <StickyNote className="h-4 w-4 text-primary" />
+                          <span className="font-medium">{note.title}</span>
+                          {note.link && (
+                            <a
+                              href={note.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-sm text-primary hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Link className="h-3 w-3" />
+                              Link
+                            </a>
+                          )}
+                        </div>
+                        {note.description && (
+                          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
+                            {note.description}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Added {formatDate(new Date(note.createdAt), { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <div className="flex gap-1 ml-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingNote(note);
+                            setShowNoteModal(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteNote(note.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
       {/* Item Modal */}
       {showItemModal && (
         <PrepItemModal
@@ -616,6 +792,24 @@ export default function MastersPrepPage() {
             setSessionItemId(null);
           }}
           onSave={(data) => handleAddSession(sessionItemId, data)}
+        />
+      )}
+
+      {/* Note Modal */}
+      {showNoteModal && (
+        <NoteModal
+          note={editingNote}
+          onClose={() => {
+            setShowNoteModal(false);
+            setEditingNote(null);
+          }}
+          onSave={(data) => {
+            if (editingNote) {
+              handleUpdateNote(editingNote.id, data);
+            } else {
+              handleCreateNote(data);
+            }
+          }}
         />
       )}
     </PageContainer>
@@ -1158,6 +1352,88 @@ function SessionModal({
             <Button type="submit" disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Log Session
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function NoteModal({
+  note,
+  onClose,
+  onSave,
+}: {
+  note: QuickNote | null;
+  onClose: () => void;
+  onSave: (data: Partial<QuickNote>) => void;
+}) {
+  const [formData, setFormData] = React.useState({
+    title: note?.title || '',
+    description: note?.description || '',
+    link: note?.link || '',
+  });
+  const [saving, setSaving] = React.useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    await onSave({
+      title: formData.title,
+      description: formData.description || undefined,
+      link: formData.link || undefined,
+    });
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-background rounded-lg shadow-lg w-full max-w-md m-4">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">{note ? 'Edit Note' : 'Add Quick Note'}</h2>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          <div>
+            <label className="text-sm font-medium">Title *</label>
+            <Input
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              placeholder="Note title..."
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full min-h-[120px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+              placeholder="Additional details..."
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Link</label>
+            <Input
+              value={formData.link}
+              onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+              placeholder="https://..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {note ? 'Update' : 'Add'} Note
             </Button>
           </div>
         </form>

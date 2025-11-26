@@ -283,6 +283,14 @@ export const api = {
     addSession: (itemId: string, data: unknown) => api.post<unknown>(`/masters-prep/${itemId}/sessions`, data),
     stats: () => api.get<unknown>('/masters-prep/stats'),
     readiness: () => api.get<unknown>('/masters-prep/readiness'),
+    notes: {
+      list: (params?: { page?: number; limit?: number; search?: string }) =>
+        api.paginated<unknown>('/masters-prep/notes', params),
+      get: (id: string) => api.get<unknown>(`/masters-prep/notes/${id}`),
+      create: (data: unknown) => api.post<unknown>('/masters-prep/notes', data),
+      update: (id: string, data: unknown) => api.put<unknown>(`/masters-prep/notes/${id}`, data),
+      delete: (id: string) => api.delete<unknown>(`/masters-prep/notes/${id}`),
+    },
   },
 
   // Goals endpoints

@@ -43,6 +43,7 @@ model User {
   jobApplications       JobApplication[]
   mastersPrepItems      MastersPrepItem[]
   mastersPrepSessions   MastersPrepSession[]
+  mastersPrepNotes      MastersPrepNote[]
 
   @@map("users")
 }
@@ -855,4 +856,18 @@ model MastersPrepSession {
   prepItem MastersPrepItem @relation(fields: [prepItemId], references: [id], onDelete: Cascade)
 
   @@map("masters_prep_sessions")
+}
+
+model MastersPrepNote {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  title       String
+  description String?  @db.Text
+  link        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("masters_prep_notes")
 }
