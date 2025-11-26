@@ -43,10 +43,26 @@ import {
   DollarSign,
   Bitcoin,
   Building,
+  BarChart3,
+  List,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/contexts/theme-context';
 import { formatDate, toLocalDateString } from '@/lib/utils';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from 'recharts';
 
 // Types
 interface FinancialTransaction {
@@ -68,7 +84,7 @@ interface FinancialStats {
     totalIncome: number;
     totalSpending: number;
     totalInvestment: number;
-    netBalance: number;
+    netWorth: number;
     savingsRate: number;
   };
   spending: {
@@ -130,8 +146,104 @@ const INVESTMENT_TYPES = [
   { value: 'other', label: 'Other', icon: Wallet },
 ] as const;
 
+// Theme-aware tooltip styles
+const getTooltipStyles = (isDark: boolean) => ({
+  contentStyle: {
+    backgroundColor: isDark ? 'hsl(0 0% 12%)' : '#ffffff',
+    border: `1px solid ${isDark ? 'hsl(0 0% 22%)' : '#e5e7eb'}`,
+    borderRadius: '8px',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  },
+  labelStyle: { color: isDark ? '#f5f5f5' : '#111827', fontWeight: 600 },
+  itemStyle: { color: isDark ? '#d4d4d4' : '#374151' },
+});
+
+// Theme-aware chart colors
+const getChartColors = (isDark: boolean) => ({
+  gridStroke: isDark ? 'hsl(0 0% 25%)' : 'hsl(220 10% 88%)',
+  axisColor: isDark ? 'hsl(0 0% 60%)' : 'hsl(220 10% 45%)',
+});
+
+// Financial chart colors
+const FINANCIAL_COLORS = {
+  income: '#10b981',      // green
+  spending: '#ef4444',    // red
+  investment: '#3b82f6',  // blue
+  necessary: '#22c55e',   // green
+  unnecessary: '#f97316', // orange
+};
+
+// Category chart colors
+const CATEGORY_COLORS = [
+  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
+  '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
+  '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
+];
+
+// Format IDR currency
+const formatIDR = (value: number) => {
+  if (value >= 1000000) {
+    return `${(value / 1000000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(0)}K`;
+  }
+  return value.toString();
+};
+
+// Helper function for daily cash flow data (last 7 days time series)
+function getDailyCashFlowData(financialTransactions: FinancialTransaction[]) {
+  const days: { date: string; displayDate: string }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    days.push({
+      date: date.toISOString().split('T')[0],
+      displayDate: date.toLocaleDateString('en-US', { weekday: 'short' }),
+    });
+  }
+
+  return days.map(({ date, displayDate }) => {
+    const dayTransactions = financialTransactions.filter(t => t.date.split('T')[0] === date);
+    return {
+      date,
+      displayDate,
+      income: dayTransactions.filter(t => t.direction === 'income').reduce((sum, t) => sum + t.amountIdr, 0),
+      spending: dayTransactions.filter(t => t.direction === 'spend').reduce((sum, t) => sum + t.amountIdr, 0),
+      investment: dayTransactions.filter(t => t.direction === 'invest').reduce((sum, t) => sum + t.amountIdr, 0),
+    };
+  });
+}
+
+// Helper function for daily spending breakdown by necessity (last 7 days)
+function getDailySpendingData(financialTransactions: FinancialTransaction[]) {
+  const days: { date: string; displayDate: string }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    days.push({
+      date: date.toISOString().split('T')[0],
+      displayDate: date.toLocaleDateString('en-US', { weekday: 'short' }),
+    });
+  }
+
+  return days.map(({ date, displayDate }) => {
+    const daySpending = financialTransactions.filter(t => t.date.split('T')[0] === date && t.direction === 'spend');
+    return {
+      date,
+      displayDate,
+      necessary: daySpending.filter(t => t.isNecessary === true).reduce((sum, t) => sum + t.amountIdr, 0),
+      unnecessary: daySpending.filter(t => t.isNecessary === false).reduce((sum, t) => sum + t.amountIdr, 0),
+    };
+  });
+}
+
 export default function FinancialPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+  const tooltipStyles = getTooltipStyles(isDark);
+  const chartColors = getChartColors(isDark);
   const [transactions, setTransactions] = React.useState<FinancialTransaction[]>([]);
   const [stats, setStats] = React.useState<FinancialStats | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -139,6 +251,9 @@ export default function FinancialPage() {
   // Modal states
   const [showModal, setShowModal] = React.useState(false);
   const [editingTransaction, setEditingTransaction] = React.useState<FinancialTransaction | null>(null);
+
+  // View mode toggle
+  const [viewMode, setViewMode] = React.useState<'analytics' | 'log'>('analytics');
 
   // Filters
   const [filterDirection, setFilterDirection] = React.useState<string>('all');
@@ -251,210 +366,371 @@ export default function FinancialPage() {
         }
       />
 
-      {/* Stats Overview */}
-      {stats && stats.totalTransactions > 0 && (
-        <PageSection title="Financial Overview">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <StatCard
-              label="Total Income"
-              value={formatCurrency(stats.summary.totalIncome)}
-              icon={<ArrowUpRight className="h-5 w-5" />}
-              variant="success"
-            />
-            <StatCard
-              label="Total Spending"
-              value={formatCurrency(stats.summary.totalSpending)}
-              icon={<ArrowDownRight className="h-5 w-5" />}
-              variant="error"
-            />
-            <StatCard
-              label="Investments"
-              value={formatCurrency(stats.summary.totalInvestment)}
-              icon={<PiggyBank className="h-5 w-5" />}
-              variant="info"
-            />
-            <StatCard
-              label="Net Balance"
-              value={formatCurrency(stats.summary.netBalance)}
-              icon={<Wallet className="h-5 w-5" />}
-              variant={stats.summary.netBalance >= 0 ? 'success' : 'error'}
-            />
-          </div>
-
-          {/* Spending & Savings Analysis */}
-          <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-2">
-            {/* Spending Breakdown */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center justify-between">
-                  <span>Spending Analysis</span>
-                  <span className="text-sm font-normal text-muted-foreground">
-                    Savings Rate: {stats.summary.savingsRate.toFixed(1)}%
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* Necessary vs Unnecessary */}
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>Necessary</span>
-                      <span className="text-muted-foreground">
-                        {formatCurrency(stats.spending.necessary)} ({stats.spending.necessaryPercentage.toFixed(0)}%)
-                      </span>
-                    </div>
-                    <Progress value={stats.spending.necessaryPercentage} className="h-2" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>Unnecessary</span>
-                      <span className="text-muted-foreground">
-                        {formatCurrency(stats.spending.unnecessary)} ({(100 - stats.spending.necessaryPercentage).toFixed(0)}%)
-                      </span>
-                    </div>
-                    <Progress value={100 - stats.spending.necessaryPercentage} className="h-2 [&>div]:bg-red-500" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Top Categories */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Top Spending Categories</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {topCategories.map(([category, amount]) => {
-                    const percentage = stats.spending.total > 0
-                      ? (amount / stats.spending.total) * 100
-                      : 0;
-                    const categoryInfo = CATEGORIES.find((c) => c.value === category);
-                    const CategoryIcon = categoryInfo?.icon || Wallet;
-                    return (
-                      <div key={category}>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="flex items-center gap-2">
-                            <CategoryIcon className="h-4 w-4" />
-                            {categoryInfo?.label || category}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {formatCurrency(amount)}
-                          </span>
-                        </div>
-                        <Progress value={percentage} className="h-2" />
-                      </div>
-                    );
-                  })}
-                  {topCategories.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No spending data yet.</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Investment Breakdown */}
-          {stats.investments.total > 0 && (
-            <Card className="mt-4">
-              <CardHeader>
-                <CardTitle className="text-base">Investment Portfolio</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                  {Object.entries(stats.investments.byType).map(([type, amount]) => {
-                    const typeInfo = INVESTMENT_TYPES.find((t) => t.value === type);
-                    const TypeIcon = typeInfo?.icon || PiggyBank;
-                    return (
-                      <div key={type} className="p-3 border rounded-md">
-                        <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                          <TypeIcon className="h-4 w-4" />
-                          <span className="text-xs">{typeInfo?.label || type}</span>
-                        </div>
-                        <p className="text-lg font-semibold">{formatCurrency(amount)}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </PageSection>
-      )}
-
-      {/* Search and Filter */}
-      <div className="flex flex-col gap-4 mb-6 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search transactions..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            variant={filterDirection === 'all' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilterDirection('all')}
+      {/* View Mode Toggle */}
+      <div className="flex items-center gap-2 mb-6">
+        <div className="inline-flex rounded-lg border p-1 bg-muted/30">
+          <button
+            onClick={() => setViewMode('analytics')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'analytics'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
-            All
-          </Button>
-          {DIRECTIONS.map(({ value, label, icon: Icon, color }) => (
-            <Button
-              key={value}
-              variant={filterDirection === value ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterDirection(value)}
-              className="gap-1"
-            >
-              <Icon className={`h-4 w-4 ${filterDirection !== value ? color : ''}`} />
-              {label}
-            </Button>
-          ))}
+            <BarChart3 className="h-4 w-4" />
+            Analytics
+          </button>
+          <button
+            onClick={() => setViewMode('log')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'log'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <List className="h-4 w-4" />
+            Log
+          </button>
         </div>
       </div>
 
-      {/* Transactions List */}
-      {filteredTransactions.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground">
-              {transactions.length === 0 ? 'No transactions recorded yet.' : 'No transactions match your search.'}
-            </p>
-            {transactions.length === 0 && (
+      {/* Analytics View */}
+      {viewMode === 'analytics' && (
+        <>
+          {/* Stats Overview */}
+          {stats && stats.totalTransactions > 0 && (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4 mb-6">
+                <StatCard
+                  label="Total Income"
+                  value={formatCurrency(stats.summary.totalIncome)}
+                  icon={<ArrowUpRight className="h-5 w-5" />}
+                  variant="success"
+                />
+                <StatCard
+                  label="Total Spending"
+                  value={formatCurrency(stats.summary.totalSpending)}
+                  icon={<ArrowDownRight className="h-5 w-5" />}
+                  variant="error"
+                />
+                <StatCard
+                  label="Investments"
+                  value={formatCurrency(stats.summary.totalInvestment)}
+                  icon={<PiggyBank className="h-5 w-5" />}
+                  variant="info"
+                />
+                <StatCard
+                  label="Net Worth"
+                  value={formatCurrency(stats.summary.netWorth)}
+                  icon={<Wallet className="h-5 w-5" />}
+                  variant={stats.summary.netWorth >= 0 ? 'success' : 'error'}
+                />
+              </div>
+
+              {/* Spending & Savings Analysis */}
+              <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2">
+                {/* Spending Breakdown */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center justify-between">
+                      <span>Spending Analysis</span>
+                      <span className="text-sm font-normal text-muted-foreground">
+                        Savings Rate: {stats.summary.savingsRate.toFixed(1)}%
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {/* Necessary vs Unnecessary */}
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>Necessary</span>
+                          <span className="text-muted-foreground">
+                            {formatCurrency(stats.spending.necessary)} ({stats.spending.necessaryPercentage.toFixed(0)}%)
+                          </span>
+                        </div>
+                        <Progress value={stats.spending.necessaryPercentage} className="h-2" />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>Unnecessary</span>
+                          <span className="text-muted-foreground">
+                            {formatCurrency(stats.spending.unnecessary)} ({(100 - stats.spending.necessaryPercentage).toFixed(0)}%)
+                          </span>
+                        </div>
+                        <Progress value={100 - stats.spending.necessaryPercentage} className="h-2 [&>div]:bg-red-500" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Top Categories */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Top Spending Categories</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {topCategories.map(([category, amount]) => {
+                        const percentage = stats.spending.total > 0
+                          ? (amount / stats.spending.total) * 100
+                          : 0;
+                        const categoryInfo = CATEGORIES.find((c) => c.value === category);
+                        const CategoryIcon = categoryInfo?.icon || Wallet;
+                        return (
+                          <div key={category}>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="flex items-center gap-2">
+                                <CategoryIcon className="h-4 w-4" />
+                                {categoryInfo?.label || category}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {formatCurrency(amount)}
+                              </span>
+                            </div>
+                            <Progress value={percentage} className="h-2" />
+                          </div>
+                        );
+                      })}
+                      {topCategories.length === 0 && (
+                        <p className="text-sm text-muted-foreground">No spending data yet.</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Investment Breakdown */}
+              {stats.investments.total > 0 && (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="text-base">Investment Portfolio</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                      {Object.entries(stats.investments.byType).map(([type, amount]) => {
+                        const typeInfo = INVESTMENT_TYPES.find((t) => t.value === type);
+                        const TypeIcon = typeInfo?.icon || PiggyBank;
+                        return (
+                          <div key={type} className="p-3 border rounded-md">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                              <TypeIcon className="h-4 w-4" />
+                              <span className="text-xs">{typeInfo?.label || type}</span>
+                            </div>
+                            <p className="text-lg font-semibold">{formatCurrency(amount)}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Analytics Charts */}
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Daily Cash Flow (Stacked Bar Chart - Time Series) */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Daily Cash Flow</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="h-[200px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={getDailyCashFlowData(transactions)}
+                          margin={{ top: 5, right: 10, left: 5, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} vertical={false} />
+                          <XAxis dataKey="displayDate" stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} />
+                          <YAxis stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} width={35} tickFormatter={formatIDR} />
+                          <Tooltip
+                            cursor={false}
+                            {...tooltipStyles}
+                            content={({ active, payload }) => {
+                              if (!active || !payload) return null;
+                              const nonZeroItems = payload.filter((item: any) => item.value > 0);
+                              if (nonZeroItems.length === 0) return null;
+                              return (
+                                <div style={{
+                                  ...tooltipStyles.contentStyle,
+                                  padding: '8px 10px',
+                                  fontSize: '11px',
+                                }}>
+                                  <p style={{ ...tooltipStyles.labelStyle, marginBottom: '4px', fontSize: '11px' }}>
+                                    {payload[0]?.payload?.displayDate}
+                                  </p>
+                                  {nonZeroItems.map((item: any, idx: number) => (
+                                    <p key={idx} style={{ ...tooltipStyles.itemStyle, margin: '2px 0', fontSize: '10px' }}>
+                                      <span style={{ color: item.fill }}>{item.name}</span>: Rp {formatIDR(item.value)}
+                                    </p>
+                                  ))}
+                                </div>
+                              );
+                            }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: '9px' }} />
+                          <Bar dataKey="income" name="Income" stackId="cashflow" fill={FINANCIAL_COLORS.income} radius={[0, 0, 0, 0]} />
+                          <Bar dataKey="investment" name="Investment" stackId="cashflow" fill={FINANCIAL_COLORS.investment} radius={[0, 0, 0, 0]} />
+                          <Bar dataKey="spending" name="Spending" stackId="cashflow" fill={FINANCIAL_COLORS.spending} radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Daily Spending Discipline (Stacked Bar Chart - Time Series) */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Daily Spending Discipline</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="h-[200px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={getDailySpendingData(transactions)}
+                          margin={{ top: 5, right: 10, left: 5, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} vertical={false} />
+                          <XAxis dataKey="displayDate" stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} />
+                          <YAxis stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} width={35} tickFormatter={formatIDR} />
+                          <Tooltip
+                            cursor={false}
+                            {...tooltipStyles}
+                            content={({ active, payload }) => {
+                              if (!active || !payload) return null;
+                              const nonZeroItems = payload.filter((item: any) => item.value > 0);
+                              if (nonZeroItems.length === 0) return null;
+                              const total = nonZeroItems.reduce((sum: number, item: any) => sum + item.value, 0);
+                              return (
+                                <div style={{
+                                  ...tooltipStyles.contentStyle,
+                                  padding: '8px 10px',
+                                  fontSize: '11px',
+                                }}>
+                                  <p style={{ ...tooltipStyles.labelStyle, marginBottom: '4px', fontSize: '11px' }}>
+                                    {payload[0]?.payload?.displayDate} - Total: Rp {formatIDR(total)}
+                                  </p>
+                                  {nonZeroItems.map((item: any, idx: number) => (
+                                    <p key={idx} style={{ ...tooltipStyles.itemStyle, margin: '2px 0', fontSize: '10px' }}>
+                                      <span style={{ color: item.fill }}>{item.name}</span>: Rp {formatIDR(item.value)}
+                                    </p>
+                                  ))}
+                                </div>
+                              );
+                            }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: '9px' }} />
+                          <Bar dataKey="necessary" name="Necessary" stackId="spending" fill={FINANCIAL_COLORS.necessary} radius={[0, 0, 0, 0]} />
+                          <Bar dataKey="unnecessary" name="Unnecessary" stackId="spending" fill={FINANCIAL_COLORS.unnecessary} radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+
+          {/* Empty state for analytics */}
+          {(!stats || stats.totalTransactions === 0) && (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <p className="text-muted-foreground">No financial data yet. Start adding transactions to see analytics!</p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => {
+                    setEditingTransaction(null);
+                    setShowModal(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Your First Transaction
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Log View */}
+      {viewMode === 'log' && (
+        <>
+          {/* Search and Filter */}
+          <div className="flex flex-col gap-4 mb-6 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search transactions..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
               <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => {
-                  setEditingTransaction(null);
-                  setShowModal(true);
-                }}
+                variant={filterDirection === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterDirection('all')}
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Your First Transaction
+                All
               </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredTransactions.map((transaction) => (
-            <TransactionCard
-              key={transaction.id}
-              transaction={transaction}
-              isExpanded={expandedTransaction === transaction.id}
-              onToggleExpand={() => setExpandedTransaction(expandedTransaction === transaction.id ? null : transaction.id)}
-              onEdit={() => {
-                setEditingTransaction(transaction);
-                setShowModal(true);
-              }}
-              onDelete={() => handleDelete(transaction.id)}
-            />
-          ))}
-        </div>
+              {DIRECTIONS.map(({ value, label, icon: Icon, color }) => (
+                <Button
+                  key={value}
+                  variant={filterDirection === value ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilterDirection(value)}
+                  className="gap-1"
+                >
+                  <Icon className={`h-4 w-4 ${filterDirection !== value ? color : ''}`} />
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Transactions List */}
+          {filteredTransactions.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <p className="text-muted-foreground">
+                  {transactions.length === 0 ? 'No transactions recorded yet.' : 'No transactions match your search.'}
+                </p>
+                {transactions.length === 0 && (
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => {
+                      setEditingTransaction(null);
+                      setShowModal(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Your First Transaction
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {filteredTransactions.map((transaction) => (
+                <TransactionCard
+                  key={transaction.id}
+                  transaction={transaction}
+                  isExpanded={expandedTransaction === transaction.id}
+                  onToggleExpand={() => setExpandedTransaction(expandedTransaction === transaction.id ? null : transaction.id)}
+                  onEdit={() => {
+                    setEditingTransaction(transaction);
+                    setShowModal(true);
+                  }}
+                  onDelete={() => handleDelete(transaction.id)}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Modal */}
@@ -662,7 +938,7 @@ function TransactionModal({
   }, [formData.direction]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
       <div className="bg-background rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto m-4">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">

@@ -2,17 +2,14 @@
 
 import * as React from 'react';
 import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/contexts/theme-context';
 import { PageContainer, PageHeader, PageSection } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Badge, Progress } from '@/components/ui';
 import {
   CalendarDays,
-  BookOpen,
-  Languages,
+  Clock,
   Dumbbell,
   Heart,
-  Target,
-  TrendingUp,
-  Clock,
   Loader2,
   Flame,
   Brain,
@@ -35,6 +32,24 @@ import {
   Cell,
   ComposedChart,
 } from 'recharts';
+
+// Theme-aware tooltip styles
+const getTooltipStyles = (isDark: boolean) => ({
+  contentStyle: {
+    backgroundColor: isDark ? 'hsl(0 0% 12%)' : '#ffffff',
+    border: `1px solid ${isDark ? 'hsl(0 0% 22%)' : '#e5e7eb'}`,
+    borderRadius: '8px',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  },
+  labelStyle: { color: isDark ? '#f5f5f5' : '#111827', fontWeight: 600 },
+  itemStyle: { color: isDark ? '#d4d4d4' : '#374151' },
+});
+
+// Theme-aware chart colors
+const getChartColors = (isDark: boolean) => ({
+  gridStroke: isDark ? 'hsl(0 0% 25%)' : 'hsl(220 10% 88%)',
+  axisColor: isDark ? 'hsl(0 0% 60%)' : 'hsl(220 10% 45%)',
+});
 
 // Types for API responses
 interface TodaySummary {
@@ -132,7 +147,11 @@ interface Goal {
 
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { resolvedTheme } = useTheme();
   const today = new Date();
+  const isDark = resolvedTheme === 'dark';
+  const tooltipStyles = getTooltipStyles(isDark);
+  const chartColors = getChartColors(isDark);
 
   const [todaySummary, setTodaySummary] = React.useState<TodaySummary | null>(null);
   const [chartData, setChartData] = React.useState<ChartData | null>(null);
@@ -210,36 +229,6 @@ export default function DashboardPage() {
         description={formatDate(today, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
       />
 
-      {/* Quick Actions */}
-      <PageSection title="Quick Actions">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <QuickActionCard
-            icon={<CalendarDays className="h-5 w-5" />}
-            label="Daily Log"
-            href="/daily-log"
-            color="bg-blue-500/10 text-blue-600"
-          />
-          <QuickActionCard
-            icon={<Languages className="h-5 w-5" />}
-            label="IELTS Session"
-            href="/ielts"
-            color="bg-purple-500/10 text-purple-600"
-          />
-          <QuickActionCard
-            icon={<Dumbbell className="h-5 w-5" />}
-            label="Log Workout"
-            href="/workouts"
-            color="bg-emerald-500/10 text-emerald-600"
-          />
-          <QuickActionCard
-            icon={<BookOpen className="h-5 w-5" />}
-            label="Reading Log"
-            href="/books"
-            color="bg-amber-500/10 text-amber-600"
-          />
-        </div>
-      </PageSection>
-
       {/* Summary Stats */}
       <PageSection title="Overview (Last 14 Days)">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
@@ -282,48 +271,66 @@ export default function DashboardPage() {
         </div>
       </PageSection>
 
-      {/* Time Investment Chart - Full Width */}
-      <Card>
-        <CardHeader className="py-2 px-3">
-          <CardTitle className="text-sm font-medium">Time Investment</CardTitle>
-        </CardHeader>
-        <CardContent className="p-2">
-          <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData?.timeInvestment || []} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis
-                  dataKey="displayDate"
-                  tick={{ fontSize: 10 }}
-                  className="text-muted-foreground"
-                />
-                <YAxis
-                  tick={{ fontSize: 10 }}
-                  className="text-muted-foreground"
-                  width={30}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                  }}
-                  labelStyle={{ color: '#111827', fontWeight: 600 }}
-                  itemStyle={{ color: '#374151' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '10px' }} />
-                <Bar dataKey="workout" name="Workout" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="learning" name="Learning" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="work" name="Work" stackId="a" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Charts Section */}
+      <div className="space-y-4 mb-8">
+        {/* Time Investment Chart - Full Width */}
+        <Card>
+          <CardHeader className="py-2 px-3">
+            <CardTitle className="text-sm font-medium">Time Investment</CardTitle>
+          </CardHeader>
+          <CardContent className="p-2">
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData?.timeInvestment || []} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+                  <XAxis
+                    dataKey="displayDate"
+                    tick={{ fontSize: 10, fill: chartColors.axisColor }}
+                    stroke={chartColors.gridStroke}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: chartColors.axisColor }}
+                    stroke={chartColors.gridStroke}
+                    width={30}
+                  />
+                  <Tooltip
+                    cursor={false}
+                    {...tooltipStyles}
+                    content={({ active, payload }) => {
+                      if (!active || !payload) return null;
+                      const nonZeroItems = payload.filter((item: any) => item.value > 0);
+                      if (nonZeroItems.length === 0) return null;
+                      const total = nonZeroItems.reduce((sum: number, item: any) => sum + item.value, 0);
+                      return (
+                        <div style={{
+                          ...tooltipStyles.contentStyle,
+                          padding: '6px 8px',
+                          fontSize: '10px',
+                        }}>
+                          <p style={{ ...tooltipStyles.labelStyle, marginBottom: '2px', fontSize: '10px' }}>
+                            {payload[0]?.payload?.displayDate} - {total.toFixed(1)}h
+                          </p>
+                          {nonZeroItems.map((item: any, idx: number) => (
+                            <p key={idx} style={{ ...tooltipStyles.itemStyle, margin: '1px 0', fontSize: '9px' }}>
+                              <span style={{ color: item.fill }}>{item.name}</span>: {item.value.toFixed(1)}h
+                            </p>
+                          ))}
+                        </div>
+                      );
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '10px' }} />
+                  <Bar dataKey="workout" name="Workout" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="learning" name="Learning" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="work" name="Work" stackId="a" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* 3 Charts Grid - Even 3 columns */}
-      <div className="grid gap-3 md:grid-cols-3">
+        {/* 3 Charts Grid - Even 3 columns */}
+        <div className="grid gap-4 md:grid-cols-3">
         {/* Wellness Trend */}
         <Card>
           <CardHeader className="py-2 px-3">
@@ -333,26 +340,41 @@ export default function DashboardPage() {
             <div className="h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData?.wellnessTrend || []} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
                   <XAxis
                     dataKey="displayDate"
-                    tick={{ fontSize: 9 }}
-                    className="text-muted-foreground"
+                    tick={{ fontSize: 9, fill: chartColors.axisColor }}
+                    stroke={chartColors.gridStroke}
                   />
                   <YAxis
-                    tick={{ fontSize: 9 }}
-                    className="text-muted-foreground"
+                    tick={{ fontSize: 9, fill: chartColors.axisColor }}
+                    stroke={chartColors.gridStroke}
                     width={20}
                   />
                   <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#ffffff',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                    cursor={false}
+                    {...tooltipStyles}
+                    content={({ active, payload }) => {
+                      if (!active || !payload) return null;
+                      const nonZeroItems = payload.filter((item: any) => item.value > 0);
+                      if (nonZeroItems.length === 0) return null;
+                      return (
+                        <div style={{
+                          ...tooltipStyles.contentStyle,
+                          padding: '6px 8px',
+                          fontSize: '10px',
+                        }}>
+                          <p style={{ ...tooltipStyles.labelStyle, marginBottom: '2px', fontSize: '10px' }}>
+                            {payload[0]?.payload?.displayDate}
+                          </p>
+                          {nonZeroItems.map((item: any, idx: number) => (
+                            <p key={idx} style={{ ...tooltipStyles.itemStyle, margin: '1px 0', fontSize: '9px' }}>
+                              <span style={{ color: item.fill }}>{item.name}</span>: {item.value}
+                            </p>
+                          ))}
+                        </div>
+                      );
                     }}
-                    labelStyle={{ color: '#111827', fontWeight: 600 }}
-                    itemStyle={{ color: '#374151' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '9px' }} />
                   <Bar dataKey="energy" name="Energy" stackId="wellness" fill="#10b981" radius={[0, 0, 0, 0]} />
@@ -374,28 +396,43 @@ export default function DashboardPage() {
               {chartData?.learningBreakdown && chartData.learningBreakdown.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData.learningBreakdown} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
                     <XAxis
                       dataKey="displayDate"
-                      tick={{ fontSize: 9 }}
-                      className="text-muted-foreground"
+                      tick={{ fontSize: 9, fill: chartColors.axisColor }}
+                      stroke={chartColors.gridStroke}
                     />
                     <YAxis
-                      tick={{ fontSize: 9 }}
+                      tick={{ fontSize: 9, fill: chartColors.axisColor }}
                       tickFormatter={(value) => `${value}h`}
-                      className="text-muted-foreground"
+                      stroke={chartColors.gridStroke}
                       width={25}
                     />
                     <Tooltip
-                      formatter={(value: number) => [`${value.toFixed(1)}h`, '']}
-                      contentStyle={{
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                      cursor={false}
+                      {...tooltipStyles}
+                      content={({ active, payload }) => {
+                        if (!active || !payload) return null;
+                        const nonZeroItems = payload.filter((item: any) => item.value > 0);
+                        if (nonZeroItems.length === 0) return null;
+                        const total = nonZeroItems.reduce((sum: number, item: any) => sum + item.value, 0);
+                        return (
+                          <div style={{
+                            ...tooltipStyles.contentStyle,
+                            padding: '6px 8px',
+                            fontSize: '10px',
+                          }}>
+                            <p style={{ ...tooltipStyles.labelStyle, marginBottom: '2px', fontSize: '10px' }}>
+                              {payload[0]?.payload?.displayDate} - {total.toFixed(1)}h
+                            </p>
+                            {nonZeroItems.map((item: any, idx: number) => (
+                              <p key={idx} style={{ ...tooltipStyles.itemStyle, margin: '1px 0', fontSize: '9px' }}>
+                                <span style={{ color: item.fill }}>{item.name}</span>: {item.value.toFixed(1)}h
+                              </p>
+                            ))}
+                          </div>
+                        );
                       }}
-                      labelStyle={{ color: '#111827', fontWeight: 600 }}
-                      itemStyle={{ color: '#374151' }}
                     />
                     <Legend wrapperStyle={{ fontSize: '9px' }} />
                     <Bar dataKey="ielts" name="IELTS" stackId="learning" fill="#3b82f6" radius={[0, 0, 0, 0]} />
@@ -422,31 +459,44 @@ export default function DashboardPage() {
             <div className="h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData?.financialFlow || []} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
                   <XAxis
                     dataKey="week"
-                    tick={{ fontSize: 9 }}
-                    className="text-muted-foreground"
+                    tick={{ fontSize: 9, fill: chartColors.axisColor }}
+                    stroke={chartColors.gridStroke}
                   />
                   <YAxis
-                    tick={{ fontSize: 9 }}
+                    tick={{ fontSize: 9, fill: chartColors.axisColor }}
                     tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
-                    className="text-muted-foreground"
+                    stroke={chartColors.gridStroke}
                     width={25}
                   />
                   <Tooltip
-                    formatter={(value: number) => [
-                      new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value),
-                      ''
-                    ]}
-                    contentStyle={{
-                      backgroundColor: '#ffffff',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                    cursor={false}
+                    {...tooltipStyles}
+                    content={({ active, payload }) => {
+                      if (!active || !payload) return null;
+                      const nonZeroItems = payload.filter((item: any) => item.value > 0);
+                      if (nonZeroItems.length === 0) return null;
+                      const formatCurrency = (value: number) =>
+                        new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
+                      return (
+                        <div style={{
+                          ...tooltipStyles.contentStyle,
+                          padding: '6px 8px',
+                          fontSize: '10px',
+                        }}>
+                          <p style={{ ...tooltipStyles.labelStyle, marginBottom: '2px', fontSize: '10px' }}>
+                            {payload[0]?.payload?.week}
+                          </p>
+                          {nonZeroItems.map((item: any, idx: number) => (
+                            <p key={idx} style={{ ...tooltipStyles.itemStyle, margin: '1px 0', fontSize: '9px' }}>
+                              <span style={{ color: item.stroke || item.fill }}>{item.name}</span>: {formatCurrency(item.value)}
+                            </p>
+                          ))}
+                        </div>
+                      );
                     }}
-                    labelStyle={{ color: '#111827', fontWeight: 600 }}
-                    itemStyle={{ color: '#374151' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '9px' }} />
                   <Bar dataKey="income" name="Income" stackId="financial" fill="#10b981" radius={[0, 0, 0, 0]} />
@@ -464,12 +514,14 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+        </div>
 
-      {/* Activity Heatmap */}
-      <PageSection title="Activity Heatmap">
+        {/* Activity Heatmap */}
         <Card>
-          <CardContent className="pt-6">
+          <CardHeader className="py-2 px-3">
+            <CardTitle className="text-sm font-medium">Activity Heatmap</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3">
             <div className="flex flex-wrap gap-1">
               {chartData?.activityHeatmap.map((day) => (
                 <div
@@ -492,70 +544,6 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-      </PageSection>
-
-      {/* Today's Summary and Quick Actions */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Today's Summary */}
-        <PageSection title="Today's Status">
-          <div className="grid grid-cols-2 gap-4">
-            <StatCard
-              icon={<TrendingUp className="h-5 w-5" />}
-              label="Mood"
-              value={todaySummary?.dailyLog?.moodScore ? `${todaySummary.dailyLog.moodScore}/5` : 'N/A'}
-              color="text-amber-500"
-            />
-            <StatCard
-              icon={<Clock className="h-5 w-5" />}
-              label="Work Hours"
-              value={todaySummary?.dailyLog?.workHours ? `${todaySummary.dailyLog.workHours}h` : 'N/A'}
-              color="text-blue-500"
-            />
-            <StatCard
-              icon={<Heart className="h-5 w-5" />}
-              label="Energy"
-              value={getEnergyLabel(todaySummary?.wellness?.energyLevel || todaySummary?.dailyLog?.energyScore)}
-              color="text-rose-500"
-            />
-            <StatCard
-              icon={<CalendarDays className="h-5 w-5" />}
-              label="Sleep"
-              value={todaySummary?.wellness?.sleepHours || todaySummary?.dailyLog?.sleepHours ?
-                `${todaySummary?.wellness?.sleepHours || todaySummary?.dailyLog?.sleepHours}h` : 'N/A'}
-              color="text-purple-500"
-            />
-          </div>
-        </PageSection>
-
-        {/* Today's Checklist */}
-        <PageSection title="Today's Checklist">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-3">
-                <ChecklistItem
-                  label="Daily Log"
-                  completed={todaySummary?.completion.hasDailyLog || false}
-                  href="/daily-log"
-                />
-                <ChecklistItem
-                  label="Wellness Entry"
-                  completed={todaySummary?.completion.hasWellness || false}
-                  href="/wellness"
-                />
-                <ChecklistItem
-                  label="Reflection"
-                  completed={todaySummary?.completion.hasReflection || false}
-                  href="/reflections"
-                />
-                <ChecklistItem
-                  label="Workout"
-                  completed={todaySummary?.completion.hasWorkout || false}
-                  href="/workouts"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </PageSection>
       </div>
 
       {/* Active Goals */}
@@ -620,93 +608,6 @@ function SummaryCard({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-  color,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  color: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div className={`${color}`}>{icon}</div>
-          <div>
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="text-lg font-semibold capitalize">{value}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function QuickActionCard({
-  icon,
-  label,
-  href,
-  color,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  href: string;
-  color: string;
-}) {
-  return (
-    <a
-      href={href}
-      className="flex items-center gap-3 rounded-xl border p-4 transition-colors hover:bg-accent"
-    >
-      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${color}`}>
-        {icon}
-      </div>
-      <span className="text-sm font-medium">{label}</span>
-    </a>
-  );
-}
-
-function ChecklistItem({
-  label,
-  completed,
-  href,
-}: {
-  label: string;
-  completed: boolean;
-  href: string;
-}) {
-  return (
-    <a
-      href={href}
-      className="flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-accent"
-    >
-      <div className="flex items-center gap-3">
-        <div
-          className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
-            completed
-              ? 'border-emerald-500 bg-emerald-500 text-white'
-              : 'border-muted-foreground'
-          }`}
-        >
-          {completed && (
-            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-            </svg>
-          )}
-        </div>
-        <span className={completed ? 'text-muted-foreground line-through' : ''}>{label}</span>
-      </div>
-      {!completed && (
-        <Badge variant="warning">Pending</Badge>
-      )}
-    </a>
   );
 }
 

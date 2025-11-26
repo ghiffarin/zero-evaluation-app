@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
@@ -22,6 +22,7 @@ import {
   LogOut,
   Menu,
   X,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -59,9 +60,10 @@ interface NavSectionProps {
   title?: string;
   items: NavItem[];
   pathname: string;
+  onNavigate?: () => void;
 }
 
-function NavSection({ title, items, pathname }: NavSectionProps) {
+function NavSection({ title, items, pathname, onNavigate }: NavSectionProps) {
   return (
     <div className="px-3 py-2">
       {title && (
@@ -76,6 +78,8 @@ function NavSection({ title, items, pathname }: NavSectionProps) {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={true}
+              onClick={onNavigate}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 isActive
@@ -106,6 +110,16 @@ export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
+  // Close mobile menu on navigation
+  const handleNavigate = React.useCallback(() => {
+    setMobileOpen(false);
+  }, []);
+
+  // Close mobile menu when pathname changes
+  React.useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
   return (
     <>
       {/* Mobile menu button */}
@@ -121,7 +135,7 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          className="fixed inset-0 z-40 modal-overlay md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -136,7 +150,7 @@ export function Sidebar({ className }: SidebarProps) {
       >
         {/* Logo */}
         <div className="flex h-14 items-center border-b px-4">
-          <Link href="/dashboard" className="flex items-center gap-2">
+          <Link href="/dashboard" prefetch={true} className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <span className="text-sm font-bold text-primary-foreground">ZE</span>
             </div>
@@ -146,16 +160,32 @@ export function Sidebar({ className }: SidebarProps) {
 
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-2">
-          <NavSection items={mainNavItems} pathname={pathname} />
-          <NavSection title="Modules" items={modulesNavItems} pathname={pathname} />
-          <NavSection title="Planning" items={planningNavItems} pathname={pathname} />
+          <NavSection items={mainNavItems} pathname={pathname} onNavigate={handleNavigate} />
+          <NavSection title="Modules" items={modulesNavItems} pathname={pathname} onNavigate={handleNavigate} />
+          <NavSection title="Planning" items={planningNavItems} pathname={pathname} onNavigate={handleNavigate} />
         </div>
 
         {/* Footer */}
         <div className="border-t p-3">
           <nav className="space-y-1">
             <Link
+              href="/export"
+              prefetch={true}
+              onClick={handleNavigate}
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                pathname === '/export'
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                  : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+              )}
+            >
+              <Download className="h-4 w-4" />
+              <span>Transfer Data</span>
+            </Link>
+            <Link
               href="/settings"
+              prefetch={true}
+              onClick={handleNavigate}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 pathname === '/settings'

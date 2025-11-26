@@ -38,10 +38,31 @@ import {
   ChevronUp,
   Check,
   AlertTriangle,
+  BarChart3,
+  List,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/contexts/theme-context';
 import { formatDate, toLocalDateString } from '@/lib/utils';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  Legend,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  Cell,
+} from 'recharts';
 
 // Types
 interface WellnessEntry {
@@ -103,8 +124,90 @@ interface WellnessStats {
   }>;
 }
 
+// Theme-aware tooltip styles
+const getTooltipStyles = (isDark: boolean) => ({
+  contentStyle: {
+    backgroundColor: isDark ? 'hsl(0 0% 12%)' : '#ffffff',
+    border: `1px solid ${isDark ? 'hsl(0 0% 22%)' : '#e5e7eb'}`,
+    borderRadius: '8px',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  },
+  labelStyle: { color: isDark ? '#f5f5f5' : '#111827', fontWeight: 600 },
+  itemStyle: { color: isDark ? '#d4d4d4' : '#374151' },
+});
+
+// Theme-aware chart colors
+const getChartColors = (isDark: boolean) => ({
+  gridStroke: isDark ? 'hsl(0 0% 25%)' : 'hsl(220 10% 88%)',
+  axisColor: isDark ? 'hsl(0 0% 60%)' : 'hsl(220 10% 45%)',
+});
+
+// Wellness metric colors
+const WELLNESS_COLORS = {
+  sleep: '#3b82f6',       // blue
+  energy: '#f59e0b',      // amber
+  mood: '#10b981',        // green
+  stress: '#ef4444',      // red
+  clarity: '#8b5cf6',     // purple
+  wellness: '#06b6d4',    // cyan
+  anxiety: '#ec4899',     // pink
+};
+
+// Helper function for wellness trend data (last 7 days time series)
+function getWellnessTrendData(
+  trend: Array<{ date: string; wellnessScore: number | null; sleepHours: number | null; energyLevel: number | null; moodScore: number | null }>,
+  wellnessEntries: WellnessEntry[]
+) {
+  const days: { date: string; displayDate: string }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    days.push({
+      date: date.toISOString().split('T')[0],
+      displayDate: date.toLocaleDateString('en-US', { weekday: 'short' }),
+    });
+  }
+
+  return days.map(({ date, displayDate }) => {
+    const dayEntry = wellnessEntries.find(e => e.date.split('T')[0] === date);
+    return {
+      date,
+      displayDate,
+      wellnessScore: dayEntry?.wellnessScore || null,
+      energyLevel: dayEntry?.energyLevel || null,
+      moodScore: dayEntry?.moodScore || null,
+    };
+  });
+}
+
+// Helper function for sleep data (last 7 days time series)
+function getSleepData(wellnessEntries: WellnessEntry[]) {
+  const days: { date: string; displayDate: string }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    days.push({
+      date: date.toISOString().split('T')[0],
+      displayDate: date.toLocaleDateString('en-US', { weekday: 'short' }),
+    });
+  }
+
+  return days.map(({ date, displayDate }) => {
+    const dayEntry = wellnessEntries.find(e => e.date.split('T')[0] === date);
+    return {
+      date,
+      displayDate,
+      hours: dayEntry?.sleepHours || 0,
+    };
+  });
+}
+
 export default function WellnessPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+  const tooltipStyles = getTooltipStyles(isDark);
+  const chartColors = getChartColors(isDark);
   const [entries, setEntries] = React.useState<WellnessEntry[]>([]);
   const [stats, setStats] = React.useState<WellnessStats | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -112,6 +215,9 @@ export default function WellnessPage() {
   // Modal states
   const [showModal, setShowModal] = React.useState(false);
   const [editingEntry, setEditingEntry] = React.useState<WellnessEntry | null>(null);
+
+  // View mode toggle
+  const [viewMode, setViewMode] = React.useState<'analytics' | 'log'>('analytics');
 
   // Filters
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -217,193 +323,310 @@ export default function WellnessPage() {
         }
       />
 
-      {/* Stats Overview */}
-      {stats && stats.totalEntries > 0 && (
-        <PageSection title="Wellness Overview">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-            <StatCard
-              label="Avg Wellness"
-              value={stats.averages.wellnessScore?.toFixed(1) || 'N/A'}
-              icon={<Sparkles className="h-5 w-5" />}
-              suffix="/5"
-            />
-            <StatCard
-              label="Avg Sleep"
-              value={stats.averages.sleepHours?.toFixed(1) || 'N/A'}
-              icon={<Moon className="h-5 w-5" />}
-              suffix="h"
-            />
-            <StatCard
-              label="Avg Energy"
-              value={stats.averages.energyLevel?.toFixed(1) || 'N/A'}
-              icon={<Activity className="h-5 w-5" />}
-              suffix="/5"
-            />
-            <StatCard
-              label="Avg Mood"
-              value={stats.averages.moodScore?.toFixed(1) || 'N/A'}
-              icon={<Smile className="h-5 w-5" />}
-              suffix="/5"
-            />
-            <StatCard
-              label="Entries"
-              value={stats.totalEntries.toString()}
-              icon={<TrendingUp className="h-5 w-5" />}
-            />
-          </div>
-
-          {/* Habits & Time Breakdown */}
-          <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Healthy Habits</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <HabitProgress
-                    label="Morning Routine"
-                    icon={<Sun className="h-4 w-4" />}
-                    completed={stats.habits.morningRoutineDays}
-                    total={stats.totalEntries}
-                  />
-                  <HabitProgress
-                    label="Evening Routine"
-                    icon={<Moon className="h-4 w-4" />}
-                    completed={stats.habits.eveningRoutineDays}
-                    total={stats.totalEntries}
-                  />
-                  <HabitProgress
-                    label="No Late Snacks"
-                    icon={<Utensils className="h-4 w-4" />}
-                    completed={stats.habits.noLateSnacksDays}
-                    total={stats.totalEntries}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Time Totals</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <TimeCard
-                    label="Screen Time"
-                    minutes={stats.totals.screenTimeMin}
-                    icon={<Eye className="h-4 w-4" />}
-                  />
-                  <TimeCard
-                    label="Social Time"
-                    minutes={stats.totals.socialTimeMin}
-                    icon={<Users className="h-4 w-4" />}
-                  />
-                  <TimeCard
-                    label="Outdoor Time"
-                    minutes={stats.totals.outdoorTimeMin}
-                    icon={<TreePine className="h-4 w-4" />}
-                  />
-                  <TimeCard
-                    label="Sunlight"
-                    minutes={stats.totals.sunlightMinutes}
-                    icon={<Sun className="h-4 w-4" />}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Averages Detail */}
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle className="text-base">Health Averages</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                <AverageCard
-                  label="Sleep Quality"
-                  value={stats.averages.sleepQuality}
-                  icon={<Moon className="h-4 w-4" />}
-                />
-                <AverageCard
-                  label="Mental Clarity"
-                  value={stats.averages.mentalClarity}
-                  icon={<Brain className="h-4 w-4" />}
-                />
-                <AverageCard
-                  label="Stress Level"
-                  value={stats.averages.stressLevel}
-                  icon={<AlertTriangle className="h-4 w-4" />}
-                  inverse
-                />
-                <AverageCard
-                  label="Anxiety Level"
-                  value={stats.averages.anxietyLevel}
-                  icon={<Frown className="h-4 w-4" />}
-                  inverse
-                />
-                <AverageCard
-                  label="Diet Discipline"
-                  value={stats.averages.dietDiscipline}
-                  icon={<Utensils className="h-4 w-4" />}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </PageSection>
-      )}
-
-      {/* Search */}
-      <div className="flex flex-col gap-4 mb-6 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search wellness entries..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+      {/* View Mode Toggle */}
+      <div className="flex items-center gap-2 mb-6">
+        <div className="inline-flex rounded-lg border p-1 bg-muted/30">
+          <button
+            onClick={() => setViewMode('analytics')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'analytics'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <BarChart3 className="h-4 w-4" />
+            Analytics
+          </button>
+          <button
+            onClick={() => setViewMode('log')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'log'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <List className="h-4 w-4" />
+            Log
+          </button>
         </div>
       </div>
 
-      {/* Entries List */}
-      {filteredEntries.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground">
-              {entries.length === 0 ? 'No wellness entries logged yet.' : 'No entries match your search.'}
-            </p>
-            {entries.length === 0 && (
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => {
-                  setEditingEntry(null);
-                  setShowModal(true);
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Log Your First Wellness Entry
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredEntries.map((entry) => (
-            <EntryCard
-              key={entry.id}
-              entry={entry}
-              isExpanded={expandedEntry === entry.id}
-              onToggleExpand={() => setExpandedEntry(expandedEntry === entry.id ? null : entry.id)}
-              onEdit={() => {
-                setEditingEntry(entry);
-                setShowModal(true);
-              }}
-              onDelete={() => handleDelete(entry.id)}
-            />
-          ))}
-        </div>
+      {/* Analytics View */}
+      {viewMode === 'analytics' && (
+        <>
+          {/* Stats Overview - Essential Metrics Only */}
+          {stats && stats.totalEntries > 0 && (
+            <>
+              {/* Core Metrics - 4 essential cards */}
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4 mb-6">
+                <StatCard
+                  label="Wellness Score"
+                  value={stats.averages.wellnessScore?.toFixed(1) || 'N/A'}
+                  icon={<Sparkles className="h-5 w-5" />}
+                  suffix="/5"
+                />
+                <StatCard
+                  label="Avg Sleep"
+                  value={stats.averages.sleepHours?.toFixed(1) || 'N/A'}
+                  icon={<Moon className="h-5 w-5" />}
+                  suffix="h"
+                />
+                <StatCard
+                  label="Energy"
+                  value={stats.averages.energyLevel?.toFixed(1) || 'N/A'}
+                  icon={<Activity className="h-5 w-5" />}
+                  suffix="/5"
+                />
+                <StatCard
+                  label="Mood"
+                  value={stats.averages.moodScore?.toFixed(1) || 'N/A'}
+                  icon={<Smile className="h-5 w-5" />}
+                  suffix="/5"
+                />
+              </div>
+
+              {/* Habits - Simplified inline */}
+              <Card className="mb-6">
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center gap-6">
+                      <HabitBadge
+                        label="Morning"
+                        icon={<Sun className="h-3.5 w-3.5" />}
+                        completed={stats.habits.morningRoutineDays}
+                        total={stats.totalEntries}
+                      />
+                      <HabitBadge
+                        label="Evening"
+                        icon={<Moon className="h-3.5 w-3.5" />}
+                        completed={stats.habits.eveningRoutineDays}
+                        total={stats.totalEntries}
+                      />
+                      <HabitBadge
+                        label="No Snacks"
+                        icon={<Utensils className="h-3.5 w-3.5" />}
+                        completed={stats.habits.noLateSnacksDays}
+                        total={stats.totalEntries}
+                      />
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {stats.totalEntries} entries
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {/* Analytics Charts */}
+          {stats && stats.totalEntries > 0 && stats.trend && stats.trend.length > 0 && (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {/* Wellness Trend (Line Chart) */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Wellness Trend</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="h-[180px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={getWellnessTrendData(stats.trend, entries)}
+                        margin={{ top: 5, right: 10, left: 5, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} vertical={false} />
+                        <XAxis dataKey="displayDate" stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis domain={[0, 5]} stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} width={20} />
+                        <Tooltip
+                          cursor={false}
+                          {...tooltipStyles}
+                          content={({ active, payload }) => {
+                            if (!active || !payload) return null;
+                            const nonZeroItems = payload.filter((item: any) => item.value && item.value > 0);
+                            if (nonZeroItems.length === 0) return null;
+                            return (
+                              <div style={{
+                                ...tooltipStyles.contentStyle,
+                                padding: '8px 10px',
+                                fontSize: '11px',
+                              }}>
+                                <p style={{ ...tooltipStyles.labelStyle, marginBottom: '4px', fontSize: '11px' }}>
+                                  {payload[0]?.payload?.displayDate}
+                                </p>
+                                {nonZeroItems.map((item: any, idx: number) => (
+                                  <p key={idx} style={{ ...tooltipStyles.itemStyle, margin: '2px 0', fontSize: '10px' }}>
+                                    <span style={{ color: item.stroke }}>{item.name}</span>: {item.value?.toFixed(1)}/5
+                                  </p>
+                                ))}
+                              </div>
+                            );
+                          }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '9px' }} />
+                        <Line type="monotone" dataKey="wellnessScore" name="Wellness" stroke={WELLNESS_COLORS.wellness} strokeWidth={2} dot={{ r: 2 }} connectNulls />
+                        <Line type="monotone" dataKey="energyLevel" name="Energy" stroke={WELLNESS_COLORS.energy} strokeWidth={2} dot={{ r: 2 }} connectNulls />
+                        <Line type="monotone" dataKey="moodScore" name="Mood" stroke={WELLNESS_COLORS.mood} strokeWidth={2} dot={{ r: 2 }} connectNulls />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Sleep Hours Trend */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Sleep Hours</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="h-[180px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={getSleepData(entries)}
+                        margin={{ top: 5, right: 10, left: 5, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} vertical={false} />
+                        <XAxis dataKey="displayDate" stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis domain={[0, 12]} stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} width={20} />
+                        <Tooltip
+                          cursor={false}
+                          {...tooltipStyles}
+                          content={({ active, payload }) => {
+                            if (!active || !payload || !payload[0]) return null;
+                            const value = payload[0].value as number;
+                            if (!value || value === 0) return null;
+                            return (
+                              <div style={{
+                                ...tooltipStyles.contentStyle,
+                                padding: '8px 10px',
+                                fontSize: '11px',
+                              }}>
+                                <p style={{ ...tooltipStyles.labelStyle, marginBottom: '4px', fontSize: '11px' }}>
+                                  {payload[0]?.payload?.displayDate}
+                                </p>
+                                <p style={{ ...tooltipStyles.itemStyle, margin: '2px 0', fontSize: '10px' }}>
+                                  <span style={{ color: WELLNESS_COLORS.sleep }}>Sleep</span>: {value?.toFixed(1)}h
+                                </p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="hours" name="Sleep" fill={WELLNESS_COLORS.sleep} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Health Radar */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Health Overview</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="h-[180px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart
+                        data={[
+                          { metric: 'Sleep', value: stats.averages.sleepQuality || 0, fullMark: 5 },
+                          { metric: 'Energy', value: stats.averages.energyLevel || 0, fullMark: 5 },
+                          { metric: 'Mood', value: stats.averages.moodScore || 0, fullMark: 5 },
+                          { metric: 'Clarity', value: stats.averages.mentalClarity || 0, fullMark: 5 },
+                          { metric: 'Diet', value: stats.averages.dietDiscipline || 0, fullMark: 5 },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={55}
+                      >
+                        <PolarGrid stroke={chartColors.gridStroke} />
+                        <PolarAngleAxis dataKey="metric" tick={{ fill: chartColors.axisColor, fontSize: 9 }} />
+                        <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fill: chartColors.axisColor, fontSize: 8 }} />
+                        <Radar name="Avg" dataKey="value" stroke={WELLNESS_COLORS.wellness} fill={WELLNESS_COLORS.wellness} fillOpacity={0.3} />
+                        <Tooltip cursor={false} {...tooltipStyles} formatter={(value: number) => [`${value?.toFixed(1)}`, 'Score']} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Empty state for analytics */}
+          {(!stats || stats.totalEntries === 0) && (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <p className="text-muted-foreground">No wellness data yet. Start logging entries to see analytics!</p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => {
+                    setEditingEntry(null);
+                    setShowModal(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Log Your First Entry
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Log View */}
+      {viewMode === 'log' && (
+        <>
+          {/* Search */}
+          <div className="flex flex-col gap-4 mb-6 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search wellness entries..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          {/* Entries List */}
+          {filteredEntries.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <p className="text-muted-foreground">
+                  {entries.length === 0 ? 'No wellness entries logged yet.' : 'No entries match your search.'}
+                </p>
+                {entries.length === 0 && (
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => {
+                      setEditingEntry(null);
+                      setShowModal(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Log Your First Wellness Entry
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {filteredEntries.map((entry) => (
+                <EntryCard
+                  key={entry.id}
+                  entry={entry}
+                  isExpanded={expandedEntry === entry.id}
+                  onToggleExpand={() => setExpandedEntry(expandedEntry === entry.id ? null : entry.id)}
+                  onEdit={() => {
+                    setEditingEntry(entry);
+                    setShowModal(true);
+                  }}
+                  onDelete={() => handleDelete(entry.id)}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Modal */}
@@ -456,7 +679,7 @@ function StatCard({
   );
 }
 
-function HabitProgress({
+function HabitBadge({
   label,
   icon,
   completed,
@@ -467,78 +690,23 @@ function HabitProgress({
   completed: number;
   total: number;
 }) {
-  const percentage = total > 0 ? (completed / total) * 100 : 0;
-  return (
-    <div>
-      <div className="flex justify-between text-sm mb-1">
-        <span className="flex items-center gap-2">
-          {icon}
-          {label}
-        </span>
-        <span className="text-muted-foreground">
-          {completed}/{total} days ({percentage.toFixed(0)}%)
-        </span>
-      </div>
-      <Progress value={percentage} className="h-2" />
-    </div>
-  );
-}
+  const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const isGood = percentage >= 80;
+  const isOkay = percentage >= 50;
 
-function TimeCard({
-  label,
-  minutes,
-  icon,
-}: {
-  label: string;
-  minutes: number;
-  icon: React.ReactNode;
-}) {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  const display = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   return (
-    <div className="p-3 border rounded-md">
-      <div className="flex items-center gap-2 text-muted-foreground mb-1">
+    <div className="flex items-center gap-2">
+      <div className={`flex items-center gap-1.5 ${isGood ? 'text-green-600' : isOkay ? 'text-yellow-600' : 'text-muted-foreground'}`}>
         {icon}
-        <span className="text-xs">{label}</span>
+        <span className="text-xs font-medium">{label}</span>
       </div>
-      <p className="text-lg font-semibold">{display}</p>
+      <span className={`text-xs font-semibold ${isGood ? 'text-green-600' : isOkay ? 'text-yellow-600' : 'text-muted-foreground'}`}>
+        {percentage}%
+      </span>
     </div>
   );
 }
 
-function AverageCard({
-  label,
-  value,
-  icon,
-  inverse = false,
-}: {
-  label: string;
-  value: number | null;
-  icon: React.ReactNode;
-  inverse?: boolean;
-}) {
-  const displayValue = value?.toFixed(1) || 'N/A';
-  const getColor = () => {
-    if (value === null) return 'text-muted-foreground';
-    if (inverse) {
-      return value <= 2 ? 'text-green-600' : value <= 3 ? 'text-yellow-600' : 'text-red-600';
-    }
-    return value >= 4 ? 'text-green-600' : value >= 3 ? 'text-yellow-600' : 'text-red-600';
-  };
-
-  return (
-    <div className="p-3 border rounded-md">
-      <div className="flex items-center gap-2 text-muted-foreground mb-1">
-        {icon}
-        <span className="text-xs">{label}</span>
-      </div>
-      <p className={`text-lg font-semibold ${getColor()}`}>
-        {displayValue}<span className="text-sm text-muted-foreground">/5</span>
-      </p>
-    </div>
-  );
-}
 
 function EntryCard({
   entry,
@@ -775,7 +943,7 @@ function WellnessModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
       <div className="bg-background rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">

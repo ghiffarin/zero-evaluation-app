@@ -15,6 +15,8 @@ import mastersPrepRoutes from './masters-prep.routes.js';
 import projectRoutes from './project.routes.js';
 import goalRoutes from './goal.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
+import exportRoutes from './export.routes.js';
+import importRoutes from './import.routes.js';
 
 const router = Router();
 
@@ -45,5 +47,11 @@ router.use('/masters-prep', mastersPrepRoutes);
 // Core routes
 router.use('/projects', projectRoutes);
 router.use('/goals', goalRoutes);
+
+// Export routes
+router.use('/export', exportRoutes);
+
+// Import routes
+router.use('/import', importRoutes);
 
 export default router;

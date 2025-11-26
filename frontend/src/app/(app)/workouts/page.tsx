@@ -37,10 +37,26 @@ import {
   Timer,
   RotateCcw,
   Target,
+  BarChart3,
+  List,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/contexts/theme-context';
 import { formatDate, toLocalDateString } from '@/lib/utils';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from 'recharts';
 
 // Types
 interface WorkoutSession {
@@ -199,8 +215,44 @@ const METRICS_BY_TYPE: Record<string, {
   },
 };
 
+// Theme-aware tooltip styles
+const getTooltipStyles = (isDark: boolean) => ({
+  contentStyle: {
+    backgroundColor: isDark ? 'hsl(0 0% 12%)' : '#ffffff',
+    border: `1px solid ${isDark ? 'hsl(0 0% 22%)' : '#e5e7eb'}`,
+    borderRadius: '8px',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  },
+  labelStyle: { color: isDark ? '#f5f5f5' : '#111827', fontWeight: 600 },
+  itemStyle: { color: isDark ? '#d4d4d4' : '#374151' },
+});
+
+// Theme-aware chart colors
+const getChartColors = (isDark: boolean) => ({
+  gridStroke: isDark ? 'hsl(0 0% 25%)' : 'hsl(220 10% 88%)',
+  axisColor: isDark ? 'hsl(0 0% 60%)' : 'hsl(220 10% 45%)',
+});
+
+// Workout type chart colors
+const WORKOUT_TYPE_COLORS: Record<string, string> = {
+  jogging: '#ef4444',    // red
+  walking: '#22c55e',    // green
+  strength: '#3b82f6',   // blue
+  hiit: '#f97316',       // orange
+  swimming: '#06b6d4',   // cyan
+  cycling: '#8b5cf6',    // purple
+  stretching: '#ec4899', // pink
+  yoga: '#14b8a6',       // teal
+  sports: '#eab308',     // yellow
+  other: '#6b7280',      // gray
+};
+
 export default function WorkoutsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+  const tooltipStyles = getTooltipStyles(isDark);
+  const chartColors = getChartColors(isDark);
   const [sessions, setSessions] = React.useState<WorkoutSession[]>([]);
   const [stats, setStats] = React.useState<WorkoutStats | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -208,6 +260,9 @@ export default function WorkoutsPage() {
   // Modal states
   const [showModal, setShowModal] = React.useState(false);
   const [editingSession, setEditingSession] = React.useState<WorkoutSession | null>(null);
+
+  // View mode toggle
+  const [viewMode, setViewMode] = React.useState<'analytics' | 'log'>('analytics');
 
   // Filters
   const [filterType, setFilterType] = React.useState<string>('all');
@@ -292,6 +347,80 @@ export default function WorkoutsPage() {
         .slice(0, 5)
     : [];
 
+  // Helper function for daily workout duration data (stacked by workout type)
+  function getDailyWorkoutData(workoutSessions: WorkoutSession[]) {
+    const days: { date: string; displayDate: string }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      days.push({
+        date: date.toISOString().split('T')[0],
+        displayDate: date.toLocaleDateString('en-US', { weekday: 'short' }),
+      });
+    }
+
+    return days.map(({ date, displayDate }) => {
+      const daySessions = workoutSessions.filter(s => s.date.split('T')[0] === date);
+      return {
+        date,
+        displayDate,
+        jogging: daySessions.filter(s => s.workoutType === 'jogging').reduce((sum, s) => sum + (s.durationMin || 0), 0),
+        walking: daySessions.filter(s => s.workoutType === 'walking').reduce((sum, s) => sum + (s.durationMin || 0), 0),
+        strength: daySessions.filter(s => s.workoutType === 'strength').reduce((sum, s) => sum + (s.durationMin || 0), 0),
+        hiit: daySessions.filter(s => s.workoutType === 'hiit').reduce((sum, s) => sum + (s.durationMin || 0), 0),
+        swimming: daySessions.filter(s => s.workoutType === 'swimming').reduce((sum, s) => sum + (s.durationMin || 0), 0),
+        cycling: daySessions.filter(s => s.workoutType === 'cycling').reduce((sum, s) => sum + (s.durationMin || 0), 0),
+        yoga: daySessions.filter(s => s.workoutType === 'yoga').reduce((sum, s) => sum + (s.durationMin || 0), 0),
+        stretching: daySessions.filter(s => s.workoutType === 'stretching').reduce((sum, s) => sum + (s.durationMin || 0), 0),
+        sports: daySessions.filter(s => s.workoutType === 'sports').reduce((sum, s) => sum + (s.durationMin || 0), 0),
+        other: daySessions.filter(s => s.workoutType === 'other').reduce((sum, s) => sum + (s.durationMin || 0), 0),
+      };
+    });
+  }
+
+  // Helper function for daily calories data (stacked by workout type)
+  function getDailyCaloriesData(workoutSessions: WorkoutSession[]) {
+    const days: { date: string; displayDate: string }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      days.push({
+        date: date.toISOString().split('T')[0],
+        displayDate: date.toLocaleDateString('en-US', { weekday: 'short' }),
+      });
+    }
+
+    return days.map(({ date, displayDate }) => {
+      const daySessions = workoutSessions.filter(s => s.date.split('T')[0] === date);
+      return {
+        date,
+        displayDate,
+        jogging: daySessions.filter(s => s.workoutType === 'jogging').reduce((sum, s) => sum + (s.calories || 0), 0),
+        walking: daySessions.filter(s => s.workoutType === 'walking').reduce((sum, s) => sum + (s.calories || 0), 0),
+        strength: daySessions.filter(s => s.workoutType === 'strength').reduce((sum, s) => sum + (s.calories || 0), 0),
+        hiit: daySessions.filter(s => s.workoutType === 'hiit').reduce((sum, s) => sum + (s.calories || 0), 0),
+        swimming: daySessions.filter(s => s.workoutType === 'swimming').reduce((sum, s) => sum + (s.calories || 0), 0),
+        cycling: daySessions.filter(s => s.workoutType === 'cycling').reduce((sum, s) => sum + (s.calories || 0), 0),
+        yoga: daySessions.filter(s => s.workoutType === 'yoga').reduce((sum, s) => sum + (s.calories || 0), 0),
+        stretching: daySessions.filter(s => s.workoutType === 'stretching').reduce((sum, s) => sum + (s.calories || 0), 0),
+        sports: daySessions.filter(s => s.workoutType === 'sports').reduce((sum, s) => sum + (s.calories || 0), 0),
+        other: daySessions.filter(s => s.workoutType === 'other').reduce((sum, s) => sum + (s.calories || 0), 0),
+      };
+    });
+  }
+
+  const dailyWorkoutData = getDailyWorkoutData(sessions);
+  const dailyCaloriesData = getDailyCaloriesData(sessions);
+
+  // Get workout types that have data (for filtering legend/bars)
+  const activeWorkoutTypes = React.useMemo(() => {
+    const types = new Set<string>();
+    sessions.forEach(s => {
+      if (s.workoutType) types.add(s.workoutType);
+    });
+    return types;
+  }, [sessions]);
+
   if (loading) {
     return (
       <PageContainer>
@@ -320,152 +449,381 @@ export default function WorkoutsPage() {
         }
       />
 
-      {/* Stats Overview */}
-      {stats && stats.totalSessions > 0 && (
-        <PageSection title="Fitness Statistics">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-            <StatCard
-              label="Workouts"
-              value={stats.totalSessions.toString()}
-              icon={<Dumbbell className="h-5 w-5" />}
-            />
-            <StatCard
-              label="Duration"
-              value={`${Math.round(stats.totalMinutes / 60)}h`}
-              icon={<Clock className="h-5 w-5" />}
-            />
-            <StatCard
-              label="Distance"
-              value={`${stats.totalDistance.toFixed(1)}km`}
-              icon={<Footprints className="h-5 w-5" />}
-            />
-            <StatCard
-              label="Calories"
-              value={stats.totalCalories.toLocaleString()}
-              icon={<Flame className="h-5 w-5" />}
-            />
-            <StatCard
-              label="Avg Quality"
-              value={stats.averageQuality?.toFixed(1) || 'N/A'}
-              icon={<TrendingUp className="h-5 w-5" />}
-              suffix="/5"
-            />
-          </div>
-
-          {/* Type breakdown */}
-          {topTypes.length > 0 && (
-            <Card className="mt-4">
-              <CardHeader>
-                <CardTitle className="text-base">Workouts by Type</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {topTypes.map(([type, data]) => {
-                    const percentage = stats.totalSessions > 0
-                      ? (data.sessions / stats.totalSessions) * 100
-                      : 0;
-                    return (
-                      <div key={type}>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="flex items-center gap-2">
-                            {getTypeIcon(type)}
-                            {getTypeLabel(type)}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {data.sessions} sessions • {Math.round(data.totalMinutes / 60)}h
-                          </span>
-                        </div>
-                        <Progress value={percentage} className="h-2" />
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </PageSection>
-      )}
-
-      {/* Search and Filter */}
-      <div className="flex flex-col gap-4 mb-6 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search workouts..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            variant={filterType === 'all' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilterType('all')}
+      {/* View Mode Toggle */}
+      <div className="flex items-center gap-2 mb-6">
+        <div className="inline-flex rounded-lg border p-1 bg-muted/30">
+          <button
+            onClick={() => setViewMode('analytics')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'analytics'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
-            All
-          </Button>
-          {WORKOUT_TYPES.slice(0, 4).map(({ value, label }) => (
-            <Button
-              key={value}
-              variant={filterType === value ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterType(value)}
-            >
-              {label}
-            </Button>
-          ))}
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="h-8 px-2 rounded-md border border-input bg-background text-sm"
+            <BarChart3 className="h-4 w-4" />
+            Analytics
+          </button>
+          <button
+            onClick={() => setViewMode('log')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'log'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
-            <option value="all">More...</option>
-            {WORKOUT_TYPES.slice(4).map(({ value, label }) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
+            <List className="h-4 w-4" />
+            Log
+          </button>
         </div>
       </div>
 
-      {/* Sessions List */}
-      {filteredSessions.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground">
-              {sessions.length === 0 ? 'No workouts logged yet.' : 'No workouts match your search.'}
-            </p>
-            {sessions.length === 0 && (
+      {/* Analytics View */}
+      {viewMode === 'analytics' && (
+        <>
+          {/* Stats Overview */}
+          {stats && stats.totalSessions > 0 && (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-5 mb-6">
+              <StatCard
+                label="Workouts"
+                value={stats.totalSessions.toString()}
+                icon={<Dumbbell className="h-5 w-5" />}
+              />
+              <StatCard
+                label="Duration"
+                value={`${Math.round(stats.totalMinutes / 60)}h`}
+                icon={<Clock className="h-5 w-5" />}
+              />
+              <StatCard
+                label="Distance"
+                value={`${stats.totalDistance.toFixed(1)}km`}
+                icon={<Footprints className="h-5 w-5" />}
+              />
+              <StatCard
+                label="Calories"
+                value={stats.totalCalories.toLocaleString()}
+                icon={<Flame className="h-5 w-5" />}
+              />
+              <StatCard
+                label="Avg Quality"
+                value={stats.averageQuality?.toFixed(1) || 'N/A'}
+                icon={<TrendingUp className="h-5 w-5" />}
+                suffix="/5"
+              />
+            </div>
+          )}
+
+          {/* Charts Grid - 2x2 layout with larger charts */}
+          {stats && stats.totalSessions > 0 && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Daily Workout Duration (Stacked Bar Chart) */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Daily Workout Duration</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dailyWorkoutData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} vertical={false} />
+                        <XAxis dataKey="displayDate" stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} width={30} />
+                        <Tooltip
+                          cursor={false}
+                          {...tooltipStyles}
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload) return null;
+                            const nonZeroItems = payload.filter((item: any) => item.value > 0);
+                            if (nonZeroItems.length === 0) return null;
+                            const total = nonZeroItems.reduce((sum: number, item: any) => sum + item.value, 0);
+                            return (
+                              <div style={{
+                                ...tooltipStyles.contentStyle,
+                                padding: '8px 10px',
+                                fontSize: '11px',
+                              }}>
+                                <p style={{ ...tooltipStyles.labelStyle, marginBottom: '4px', fontSize: '11px' }}>
+                                  {payload[0]?.payload?.displayDate} - {total} min
+                                </p>
+                                {nonZeroItems.map((item: any, idx: number) => (
+                                  <p key={idx} style={{ ...tooltipStyles.itemStyle, margin: '2px 0', fontSize: '10px' }}>
+                                    <span style={{ color: item.fill }}>{getTypeLabel(item.dataKey)}</span>: {item.value} min
+                                  </p>
+                                ))}
+                              </div>
+                            );
+                          }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '10px' }} />
+                        {activeWorkoutTypes.has('jogging') && <Bar dataKey="jogging" name="Jogging" stackId="a" fill={WORKOUT_TYPE_COLORS.jogging} />}
+                        {activeWorkoutTypes.has('walking') && <Bar dataKey="walking" name="Walking" stackId="a" fill={WORKOUT_TYPE_COLORS.walking} />}
+                        {activeWorkoutTypes.has('strength') && <Bar dataKey="strength" name="Strength" stackId="a" fill={WORKOUT_TYPE_COLORS.strength} />}
+                        {activeWorkoutTypes.has('hiit') && <Bar dataKey="hiit" name="HIIT" stackId="a" fill={WORKOUT_TYPE_COLORS.hiit} />}
+                        {activeWorkoutTypes.has('swimming') && <Bar dataKey="swimming" name="Swimming" stackId="a" fill={WORKOUT_TYPE_COLORS.swimming} />}
+                        {activeWorkoutTypes.has('cycling') && <Bar dataKey="cycling" name="Cycling" stackId="a" fill={WORKOUT_TYPE_COLORS.cycling} />}
+                        {activeWorkoutTypes.has('yoga') && <Bar dataKey="yoga" name="Yoga" stackId="a" fill={WORKOUT_TYPE_COLORS.yoga} />}
+                        {activeWorkoutTypes.has('stretching') && <Bar dataKey="stretching" name="Stretching" stackId="a" fill={WORKOUT_TYPE_COLORS.stretching} />}
+                        {activeWorkoutTypes.has('sports') && <Bar dataKey="sports" name="Sports" stackId="a" fill={WORKOUT_TYPE_COLORS.sports} />}
+                        {activeWorkoutTypes.has('other') && <Bar dataKey="other" name="Other" stackId="a" fill={WORKOUT_TYPE_COLORS.other} />}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Daily Calories Burned (Stacked Bar Chart) */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Daily Calories Burned</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dailyCaloriesData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} vertical={false} />
+                        <XAxis dataKey="displayDate" stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} width={35} />
+                        <Tooltip
+                          cursor={false}
+                          {...tooltipStyles}
+                          content={({ active, payload }) => {
+                            if (!active || !payload) return null;
+                            const nonZeroItems = payload.filter((item: any) => item.value > 0);
+                            if (nonZeroItems.length === 0) return null;
+                            const total = nonZeroItems.reduce((sum: number, item: any) => sum + item.value, 0);
+                            return (
+                              <div style={{
+                                ...tooltipStyles.contentStyle,
+                                padding: '8px 10px',
+                                fontSize: '11px',
+                              }}>
+                                <p style={{ ...tooltipStyles.labelStyle, marginBottom: '4px', fontSize: '11px' }}>
+                                  {payload[0]?.payload?.displayDate} - {total} cal
+                                </p>
+                                {nonZeroItems.map((item: any, idx: number) => (
+                                  <p key={idx} style={{ ...tooltipStyles.itemStyle, margin: '2px 0', fontSize: '10px' }}>
+                                    <span style={{ color: item.fill }}>{getTypeLabel(item.dataKey)}</span>: {item.value} cal
+                                  </p>
+                                ))}
+                              </div>
+                            );
+                          }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '10px' }} />
+                        {activeWorkoutTypes.has('jogging') && <Bar dataKey="jogging" name="Jogging" stackId="a" fill={WORKOUT_TYPE_COLORS.jogging} />}
+                        {activeWorkoutTypes.has('walking') && <Bar dataKey="walking" name="Walking" stackId="a" fill={WORKOUT_TYPE_COLORS.walking} />}
+                        {activeWorkoutTypes.has('strength') && <Bar dataKey="strength" name="Strength" stackId="a" fill={WORKOUT_TYPE_COLORS.strength} />}
+                        {activeWorkoutTypes.has('hiit') && <Bar dataKey="hiit" name="HIIT" stackId="a" fill={WORKOUT_TYPE_COLORS.hiit} />}
+                        {activeWorkoutTypes.has('swimming') && <Bar dataKey="swimming" name="Swimming" stackId="a" fill={WORKOUT_TYPE_COLORS.swimming} />}
+                        {activeWorkoutTypes.has('cycling') && <Bar dataKey="cycling" name="Cycling" stackId="a" fill={WORKOUT_TYPE_COLORS.cycling} />}
+                        {activeWorkoutTypes.has('yoga') && <Bar dataKey="yoga" name="Yoga" stackId="a" fill={WORKOUT_TYPE_COLORS.yoga} />}
+                        {activeWorkoutTypes.has('stretching') && <Bar dataKey="stretching" name="Stretching" stackId="a" fill={WORKOUT_TYPE_COLORS.stretching} />}
+                        {activeWorkoutTypes.has('sports') && <Bar dataKey="sports" name="Sports" stackId="a" fill={WORKOUT_TYPE_COLORS.sports} />}
+                        {activeWorkoutTypes.has('other') && <Bar dataKey="other" name="Other" stackId="a" fill={WORKOUT_TYPE_COLORS.other} />}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Time Distribution by Type (Pie Chart) */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Time Distribution</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={Object.entries(stats.byType)
+                            .filter(([_, data]) => data.totalMinutes > 0)
+                            .slice(0, 6)
+                            .map(([type, data]) => ({
+                              name: WORKOUT_TYPES.find(t => t.value === type)?.label || type,
+                              value: data.totalMinutes,
+                              hours: Math.round(data.totalMinutes / 60 * 10) / 10,
+                              color: WORKOUT_TYPE_COLORS[type] || '#6b7280',
+                            }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={90}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {Object.entries(stats.byType)
+                            .filter(([_, data]) => data.totalMinutes > 0)
+                            .slice(0, 6)
+                            .map(([type], index) => (
+                              <Cell key={`cell-${index}`} fill={WORKOUT_TYPE_COLORS[type] || '#6b7280'} />
+                            ))}
+                        </Pie>
+                        <Tooltip
+                          cursor={false}
+                          {...tooltipStyles}
+                          formatter={(value: number, name: string, props: any) => [`${props.payload.hours}h`, name]}
+                        />
+                        <Legend
+                          verticalAlign="middle"
+                          align="right"
+                          layout="vertical"
+                          wrapperStyle={{ fontSize: '11px', paddingLeft: '10px' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Workouts by Type Progress */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Workouts by Type</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="h-[280px] overflow-y-auto pr-2">
+                    <div className="space-y-4">
+                      {topTypes.map(([type, data]) => {
+                        const percentage = stats.totalSessions > 0
+                          ? (data.sessions / stats.totalSessions) * 100
+                          : 0;
+                        return (
+                          <div key={type}>
+                            <div className="flex justify-between text-sm mb-1.5">
+                              <span className="flex items-center gap-2">
+                                {getTypeIcon(type)}
+                                {getTypeLabel(type)}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {data.sessions} sessions • {Math.round(data.totalMinutes / 60)}h
+                              </span>
+                            </div>
+                            <div className="h-2 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{
+                                  width: `${percentage}%`,
+                                  backgroundColor: WORKOUT_TYPE_COLORS[type] || '#6b7280',
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Empty state for analytics */}
+          {(!stats || stats.totalSessions === 0) && (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <p className="text-muted-foreground">No workout data yet. Start logging workouts to see analytics!</p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => {
+                    setEditingSession(null);
+                    setShowModal(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Log Your First Workout
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Log View */}
+      {viewMode === 'log' && (
+        <>
+          {/* Search and Filter */}
+          <div className="flex flex-col gap-4 mb-6 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search workouts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
               <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => {
-                  setEditingSession(null);
-                  setShowModal(true);
-                }}
+                variant={filterType === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterType('all')}
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Log Your First Workout
+                All
               </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredSessions.map((session) => (
-            <SessionCard
-              key={session.id}
-              session={session}
-              isExpanded={expandedSession === session.id}
-              onToggleExpand={() => setExpandedSession(expandedSession === session.id ? null : session.id)}
-              onEdit={() => {
-                setEditingSession(session);
-                setShowModal(true);
-              }}
-              onDelete={() => handleDelete(session.id)}
-            />
-          ))}
-        </div>
+              {WORKOUT_TYPES.slice(0, 4).map(({ value, label }) => (
+                <Button
+                  key={value}
+                  variant={filterType === value ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilterType(value)}
+                >
+                  {label}
+                </Button>
+              ))}
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="h-8 px-2 rounded-md border border-input bg-background text-sm"
+              >
+                <option value="all">More...</option>
+                {WORKOUT_TYPES.slice(4).map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Sessions List */}
+          {filteredSessions.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <p className="text-muted-foreground">
+                  {sessions.length === 0 ? 'No workouts logged yet.' : 'No workouts match your search.'}
+                </p>
+                {sessions.length === 0 && (
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => {
+                      setEditingSession(null);
+                      setShowModal(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Log Your First Workout
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {filteredSessions.map((session) => (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  isExpanded={expandedSession === session.id}
+                  onToggleExpand={() => setExpandedSession(expandedSession === session.id ? null : session.id)}
+                  onEdit={() => {
+                    setEditingSession(session);
+                    setShowModal(true);
+                  }}
+                  onDelete={() => handleDelete(session.id)}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Modal */}
@@ -907,7 +1265,7 @@ function WorkoutModal({
   }, [formData.laps, formData.poolLength, workoutType]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
       <div className="bg-background rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">

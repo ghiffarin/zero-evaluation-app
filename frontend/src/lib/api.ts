@@ -10,8 +10,12 @@ export function setAuthToken(token: string | null) {
   if (typeof window !== 'undefined') {
     if (token) {
       localStorage.setItem('pd_os_token', token);
+      // Also set as cookie for middleware to read
+      document.cookie = `pd_os_token=${token}; path=/; max-age=604800; SameSite=Lax`;
     } else {
       localStorage.removeItem('pd_os_token');
+      // Remove cookie
+      document.cookie = 'pd_os_token=; path=/; max-age=0';
     }
   }
 }
@@ -323,6 +327,39 @@ export const api = {
     delete: (id: string) => api.delete<unknown>(`/projects/${id}`),
     getWithActivities: (id: string) => api.get<unknown>(`/projects/${id}/activities`),
   },
+
+  // Export endpoints
+  export: {
+    summary: () => api.get<{ counts: Record<string, number>; totalRecords: number }>('/export/summary'),
+    getExportUrl: (format: 'csv' | 'sql' | 'json', table?: string) => {
+      const baseUrl = API_BASE_URL;
+      let url = `${baseUrl}/export/${format}`;
+      if (table) {
+        url += `?table=${table}`;
+      }
+      return url;
+    },
+  },
+
+  // Import endpoints
+  import: {
+    validate: (data: unknown) => api.post<{
+      valid: boolean;
+      summary: Record<string, number>;
+      totalRecords: number;
+      exportedAt: string;
+    }>('/import/validate', { data }),
+    json: (data: unknown, mode: 'merge' | 'replace' = 'merge') =>
+      api.post<{
+        message: string;
+        mode: string;
+        results: Record<string, { imported: number; skipped: number; errors: number }>;
+        totals: { imported: number; skipped: number; errors: number };
+      }>('/import/json', { data, mode }),
+  },
 };
+
+// Export API base URL for direct downloads
+export const getApiBaseUrl = () => API_BASE_URL;
 
 export default api;

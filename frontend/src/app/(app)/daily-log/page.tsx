@@ -617,7 +617,7 @@ export default function DailyLogPage() {
 
         {/* Sidebar - Log This Day */}
         <div className="space-y-6">
-          <Card className="sticky top-6">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Save className="h-5 w-5" />

@@ -984,7 +984,7 @@ function ActivityModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
       <div className="bg-background rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto m-4">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">{activity ? 'Edit Activity' : 'Add Activity'}</h2>
@@ -1260,7 +1260,7 @@ function ApplicationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
       <div className="bg-background rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto m-4">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">{application ? 'Edit Application' : 'Add Application'}</h2>

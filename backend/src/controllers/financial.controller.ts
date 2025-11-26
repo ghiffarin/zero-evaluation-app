@@ -67,7 +67,7 @@ export const getFinancialStats = async (req: Request, res: Response): Promise<vo
         totalIncome,
         totalSpending,
         totalInvestment,
-        netBalance: totalIncome - totalSpending - totalInvestment,
+        netWorth: totalIncome + totalInvestment - totalSpending,
         savingsRate: totalIncome > 0 ? ((totalIncome - totalSpending) / totalIncome) * 100 : 0,
       },
       spending: {

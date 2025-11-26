@@ -25,7 +25,26 @@ import {
   Edit,
   X,
   ChevronDown,
+  TrendingUp,
+  BarChart3,
+  List,
 } from 'lucide-react';
+import { useTheme } from '@/contexts/theme-context';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
 import { formatDate, toLocalDateString } from '@/lib/utils';
@@ -101,9 +120,47 @@ const MISTAKE_CATEGORIES = [
   'other',
 ];
 
+// Theme-aware tooltip styles
+const getTooltipStyles = (isDark: boolean) => ({
+  contentStyle: {
+    backgroundColor: isDark ? 'hsl(0 0% 12%)' : '#ffffff',
+    border: `1px solid ${isDark ? 'hsl(0 0% 22%)' : '#e5e7eb'}`,
+    borderRadius: '8px',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  },
+  labelStyle: { color: isDark ? '#f5f5f5' : '#111827', fontWeight: 600 },
+  itemStyle: { color: isDark ? '#d4d4d4' : '#374151' },
+});
+
+// Theme-aware chart colors
+const getChartColors = (isDark: boolean) => ({
+  gridStroke: isDark ? 'hsl(0 0% 25%)' : 'hsl(220 10% 88%)',
+  axisColor: isDark ? 'hsl(0 0% 60%)' : 'hsl(220 10% 45%)',
+});
+
+// Chart color palette for skills
+const SKILL_CHART_COLORS = {
+  listening: '#3b82f6',    // blue
+  reading: '#10b981',      // green
+  writing_task1: '#f59e0b', // amber
+  writing_task2: '#f97316', // orange
+  speaking: '#8b5cf6',     // purple
+};
+
+// Mistake category colors
+const MISTAKE_CATEGORY_COLORS = [
+  '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e',
+  '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6',
+];
+
 export default function IeltsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = React.useState<'sessions' | 'vocab'>('sessions');
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+  const tooltipStyles = getTooltipStyles(isDark);
+  const chartColors = getChartColors(isDark);
+  const [viewMode, setViewMode] = React.useState<'analytics' | 'log'>('analytics');
+  const [logTab, setLogTab] = React.useState<'sessions' | 'vocab'>('sessions');
   const [sessions, setSessions] = React.useState<IeltsSession[]>([]);
   const [vocab, setVocab] = React.useState<IeltsVocab[]>([]);
   const [stats, setStats] = React.useState<IeltsStats | null>(null);
@@ -113,6 +170,15 @@ export default function IeltsPage() {
   const [editingSession, setEditingSession] = React.useState<IeltsSession | null>(null);
   const [editingVocab, setEditingVocab] = React.useState<IeltsVocab | null>(null);
   const [filterSkill, setFilterSkill] = React.useState<string>('all');
+
+  // Get skill types that have data (for filtering legend/bars)
+  const activeSkillTypes = React.useMemo(() => {
+    const types = new Set<string>();
+    sessions.forEach(s => {
+      if (s.skillType) types.add(s.skillType);
+    });
+    return types;
+  }, [sessions]);
 
   // Fetch data
   React.useEffect(() => {
@@ -240,195 +306,400 @@ export default function IeltsPage() {
         }
       />
 
-      {/* Stats Overview */}
-      {stats && stats.overall.totalSessions > 0 && (
-        <PageSection title="Progress Overview">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      {/* View Mode Toggle */}
+      <div className="flex items-center gap-2 mb-6">
+        <div className="inline-flex rounded-lg border p-1 bg-muted/30">
+          <button
+            onClick={() => setViewMode('analytics')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'analytics'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <BarChart3 className="h-4 w-4" />
+            Analytics
+          </button>
+          <button
+            onClick={() => setViewMode('log')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'log'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <List className="h-4 w-4" />
+            Log
+          </button>
+        </div>
+      </div>
+
+      {/* Analytics View */}
+      {viewMode === 'analytics' && (
+        <>
+          {/* Stats Overview */}
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 mb-6">
             <StatCard
               label="Total Sessions"
-              value={stats.overall.totalSessions.toString()}
+              value={stats?.overall.totalSessions.toString() || '0'}
               icon={<Target className="h-5 w-5" />}
             />
             <StatCard
               label="Total Hours"
-              value={(stats.overall.totalMinutes / 60).toFixed(1)}
+              value={stats ? (stats.overall.totalMinutes / 60).toFixed(1) : '0'}
               icon={<Clock className="h-5 w-5" />}
             />
             <StatCard
               label="Avg. Band"
-              value={stats.overall.averageBand?.toFixed(1) || 'N/A'}
+              value={stats?.overall.averageBand?.toFixed(1) || 'N/A'}
               icon={<BookOpen className="h-5 w-5" />}
             />
             <StatCard
               label="Vocab Learned"
-              value={stats.overall.totalVocab.toString()}
+              value={stats?.overall.totalVocab.toString() || '0'}
               icon={<PenTool className="h-5 w-5" />}
             />
           </div>
 
-          {/* Skills breakdown */}
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle className="text-base">Skills Progress</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {SKILL_TYPES.map(({ value, label }) => {
-                  const skillStats = stats.bySkill[value];
-                  return (
-                    <div key={value} className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">{label}</span>
-                        <span className="text-muted-foreground">
-                          {skillStats?.totalSessions || 0} sessions
-                          {skillStats?.averageBand && ` • Band ${skillStats.averageBand.toFixed(1)}`}
-                        </span>
-                      </div>
-                      <Progress
-                        value={skillStats?.totalSessions || 0}
-                        max={10}
-                        indicatorClassName={getSkillColor(value)}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </PageSection>
-      )}
-
-      {/* Tabs */}
-      <div className="flex gap-2 border-b mb-6">
-        <button
-          onClick={() => setActiveTab('sessions')}
-          className={`px-4 py-2 border-b-2 transition-colors ${
-            activeTab === 'sessions'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Sessions ({sessions.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('vocab')}
-          className={`px-4 py-2 border-b-2 transition-colors ${
-            activeTab === 'vocab'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Vocabulary ({vocab.length})
-        </button>
-      </div>
-
-      {/* Sessions Tab */}
-      {activeTab === 'sessions' && (
-        <div>
-          {/* Filter */}
-          <div className="flex gap-2 mb-4 flex-wrap">
-            <Button
-              variant={filterSkill === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterSkill('all')}
-            >
-              All
-            </Button>
-            {SKILL_TYPES.map(({ value, label }) => (
-              <Button
-                key={value}
-                variant={filterSkill === value ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilterSkill(value)}
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-
-          {filteredSessions.length === 0 ? (
+          {/* Charts Grid - 2x2 for larger charts */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Daily Practice Time - Stacked Bar Chart */}
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <p className="text-muted-foreground">No IELTS sessions logged yet.</p>
-                <Button
-                  variant="outline"
-                  className="mt-4"
-                  onClick={() => {
-                    setEditingSession(null);
-                    setShowSessionModal(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Start Practice Session
-                </Button>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Daily Practice Time</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={getDailyPracticeData(sessions)}
+                      margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+                      <XAxis
+                        dataKey="displayDate"
+                        tick={{ fontSize: 10, fill: chartColors.axisColor }}
+                        stroke={chartColors.gridStroke}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: chartColors.axisColor }}
+                        stroke={chartColors.gridStroke}
+                        width={30}
+                        tickFormatter={(value) => `${Math.round(value)}m`}
+                      />
+                      <Tooltip
+                        cursor={false}
+                        {...tooltipStyles}
+                        content={({ active, payload }) => {
+                          if (!active || !payload) return null;
+                          const nonZeroItems = payload.filter((item: any) => item.value > 0);
+                          if (nonZeroItems.length === 0) return null;
+                          const total = nonZeroItems.reduce((sum: number, item: any) => sum + item.value, 0);
+                          return (
+                            <div style={{
+                              ...tooltipStyles.contentStyle,
+                              padding: '8px 10px',
+                              fontSize: '11px',
+                            }}>
+                              <p style={{ ...tooltipStyles.labelStyle, marginBottom: '4px', fontSize: '11px' }}>
+                                {payload[0]?.payload?.displayDate} - {Math.round(total)} min
+                              </p>
+                              {nonZeroItems.map((item: any, idx: number) => (
+                                <p key={idx} style={{ ...tooltipStyles.itemStyle, margin: '2px 0', fontSize: '10px' }}>
+                                  <span style={{ color: item.fill }}>{item.name}</span>: {Math.round(item.value)} min
+                                </p>
+                              ))}
+                            </div>
+                          );
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '10px' }} />
+                      {activeSkillTypes.has('listening') && <Bar dataKey="listening" name="Listening" stackId="skills" fill={SKILL_CHART_COLORS.listening} />}
+                      {activeSkillTypes.has('reading') && <Bar dataKey="reading" name="Reading" stackId="skills" fill={SKILL_CHART_COLORS.reading} />}
+                      {activeSkillTypes.has('writing_task1') && <Bar dataKey="writing_task1" name="Writing 1" stackId="skills" fill={SKILL_CHART_COLORS.writing_task1} />}
+                      {activeSkillTypes.has('writing_task2') && <Bar dataKey="writing_task2" name="Writing 2" stackId="skills" fill={SKILL_CHART_COLORS.writing_task2} />}
+                      {activeSkillTypes.has('speaking') && <Bar dataKey="speaking" name="Speaking" stackId="skills" fill={SKILL_CHART_COLORS.speaking} />}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </CardContent>
             </Card>
-          ) : (
-            <div className="space-y-4">
-              {filteredSessions.map((session) => (
-                <SessionCard
-                  key={session.id}
-                  session={session}
-                  onEdit={() => {
-                    setEditingSession(session);
-                    setShowSessionModal(true);
-                  }}
-                  onDelete={() => handleDeleteSession(session.id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+
+            {/* Daily Band Scores - Stacked Bar Chart */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Daily Band Scores</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={getDailyBandData(sessions)}
+                      margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+                      <XAxis
+                        dataKey="displayDate"
+                        tick={{ fontSize: 10, fill: chartColors.axisColor }}
+                        stroke={chartColors.gridStroke}
+                      />
+                      <YAxis
+                        domain={[0, 9]}
+                        tick={{ fontSize: 10, fill: chartColors.axisColor }}
+                        stroke={chartColors.gridStroke}
+                        width={25}
+                      />
+                      <Tooltip
+                        cursor={false}
+                        {...tooltipStyles}
+                        content={({ active, payload }) => {
+                          if (!active || !payload) return null;
+                          const nonZeroItems = payload.filter((item: any) => item.value > 0);
+                          if (nonZeroItems.length === 0) return null;
+                          return (
+                            <div style={{
+                              ...tooltipStyles.contentStyle,
+                              padding: '8px 10px',
+                              fontSize: '11px',
+                            }}>
+                              <p style={{ ...tooltipStyles.labelStyle, marginBottom: '4px', fontSize: '11px' }}>
+                                {payload[0]?.payload?.displayDate}
+                              </p>
+                              {nonZeroItems.map((item: any, idx: number) => (
+                                <p key={idx} style={{ ...tooltipStyles.itemStyle, margin: '2px 0', fontSize: '10px' }}>
+                                  <span style={{ color: item.fill }}>{item.name}</span>: Band {item.value.toFixed(1)}
+                                </p>
+                              ))}
+                            </div>
+                          );
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '10px' }} />
+                      {activeSkillTypes.has('listening') && <Bar dataKey="listening" name="Listening" stackId="bands" fill={SKILL_CHART_COLORS.listening} />}
+                      {activeSkillTypes.has('reading') && <Bar dataKey="reading" name="Reading" stackId="bands" fill={SKILL_CHART_COLORS.reading} />}
+                      {activeSkillTypes.has('writing_task1') && <Bar dataKey="writing_task1" name="Writing 1" stackId="bands" fill={SKILL_CHART_COLORS.writing_task1} />}
+                      {activeSkillTypes.has('writing_task2') && <Bar dataKey="writing_task2" name="Writing 2" stackId="bands" fill={SKILL_CHART_COLORS.writing_task2} />}
+                      {activeSkillTypes.has('speaking') && <Bar dataKey="speaking" name="Speaking" stackId="bands" fill={SKILL_CHART_COLORS.speaking} />}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Skills Progress */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Skills Progress</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-4">
+                  {SKILL_TYPES.map(({ value, label }) => {
+                    const skillStats = stats?.bySkill[value];
+                    return (
+                      <div key={value} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium">{label}</span>
+                          <span className="text-muted-foreground">
+                            {skillStats?.totalSessions || 0} sessions
+                            {skillStats?.averageBand && ` • Band ${skillStats.averageBand.toFixed(1)}`}
+                          </span>
+                        </div>
+                        <Progress
+                          value={skillStats?.totalSessions || 0}
+                          max={10}
+                          className="h-2"
+                          indicatorClassName={getSkillColor(value)}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Mistake Categories */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Mistake Categories</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {stats && Object.keys(stats.mistakesByCategory).length > 0 ? (
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={Object.entries(stats.mistakesByCategory)
+                          .sort(([, a], [, b]) => b - a)
+                          .slice(0, 6)
+                          .map(([category, count]) => ({
+                            category: category.charAt(0).toUpperCase() + category.slice(1),
+                            count,
+                          }))}
+                        layout="vertical"
+                        margin={{ top: 5, right: 15, left: 70, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} horizontal={true} vertical={false} />
+                        <XAxis type="number" stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis dataKey="category" type="category" stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} width={65} />
+                        <Tooltip
+                          cursor={false}
+                          {...tooltipStyles}
+                          formatter={(value: number) => [`${value}`, 'Mistakes']}
+                        />
+                        <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                          {Object.entries(stats.mistakesByCategory).slice(0, 6).map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={MISTAKE_CATEGORY_COLORS[index % MISTAKE_CATEGORY_COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
+                    No mistake data recorded yet
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
       )}
 
-      {/* Vocab Tab */}
-      {activeTab === 'vocab' && (
-        <div>
-          <div className="flex justify-end mb-4">
-            <Button
-              onClick={() => {
-                setEditingVocab(null);
-                setShowVocabModal(true);
-              }}
+      {/* Log View */}
+      {viewMode === 'log' && (
+        <>
+          {/* Log Tabs */}
+          <div className="flex gap-2 border-b mb-6">
+            <button
+              onClick={() => setLogTab('sessions')}
+              className={`px-4 py-2 border-b-2 transition-colors ${
+                logTab === 'sessions'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Vocabulary
-            </Button>
+              Sessions ({sessions.length})
+            </button>
+            <button
+              onClick={() => setLogTab('vocab')}
+              className={`px-4 py-2 border-b-2 transition-colors ${
+                logTab === 'vocab'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Vocabulary ({vocab.length})
+            </button>
           </div>
 
-          {vocab.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <p className="text-muted-foreground">No vocabulary saved yet.</p>
+          {/* Sessions Tab */}
+          {logTab === 'sessions' && (
+            <div>
+              {/* Filter */}
+              <div className="flex gap-2 mb-4 flex-wrap">
                 <Button
-                  variant="outline"
-                  className="mt-4"
+                  variant={filterSkill === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilterSkill('all')}
+                >
+                  All
+                </Button>
+                {SKILL_TYPES.map(({ value, label }) => (
+                  <Button
+                    key={value}
+                    variant={filterSkill === value ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setFilterSkill(value)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+
+              {filteredSessions.length === 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <p className="text-muted-foreground">No IELTS sessions logged yet.</p>
+                    <Button
+                      variant="outline"
+                      className="mt-4"
+                      onClick={() => {
+                        setEditingSession(null);
+                        setShowSessionModal(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Start Practice Session
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {filteredSessions.map((session) => (
+                    <SessionCard
+                      key={session.id}
+                      session={session}
+                      onEdit={() => {
+                        setEditingSession(session);
+                        setShowSessionModal(true);
+                      }}
+                      onDelete={() => handleDeleteSession(session.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Vocab Tab */}
+          {logTab === 'vocab' && (
+            <div>
+              <div className="flex justify-end mb-4">
+                <Button
                   onClick={() => {
                     setEditingVocab(null);
                     setShowVocabModal(true);
                   }}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Your First Word
+                  Add Vocabulary
                 </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {vocab.map((v) => (
-                <VocabCard
-                  key={v.id}
-                  vocab={v}
-                  onEdit={() => {
-                    setEditingVocab(v);
-                    setShowVocabModal(true);
-                  }}
-                  onDelete={() => handleDeleteVocab(v.id)}
-                />
-              ))}
+              </div>
+
+              {vocab.length === 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <p className="text-muted-foreground">No vocabulary saved yet.</p>
+                    <Button
+                      variant="outline"
+                      className="mt-4"
+                      onClick={() => {
+                        setEditingVocab(null);
+                        setShowVocabModal(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Your First Word
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {vocab.map((v) => (
+                    <VocabCard
+                      key={v.id}
+                      vocab={v}
+                      onEdit={() => {
+                        setEditingVocab(v);
+                        setShowVocabModal(true);
+                      }}
+                      onDelete={() => handleDeleteVocab(v.id)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </div>
+        </>
       )}
 
       {/* Session Modal */}
@@ -620,7 +891,7 @@ function SessionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
       <div className="bg-background rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto m-4">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">
@@ -775,7 +1046,7 @@ function VocabModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
       <div className="bg-background rounded-lg shadow-lg w-full max-w-md m-4">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">
@@ -852,4 +1123,76 @@ function getSkillBgColor(skill: string): string {
     speaking: 'bg-purple-500/10 text-purple-600',
   };
   return colors[skill] || 'bg-gray-500/10 text-gray-600';
+}
+
+// Helper function to generate daily practice time data for time series chart
+function getDailyPracticeData(sessions: IeltsSession[]) {
+  // Get last 7 days
+  const days: { date: string; displayDate: string }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    days.push({
+      date: date.toISOString().split('T')[0],
+      displayDate: date.toLocaleDateString('en-US', { weekday: 'short' }),
+    });
+  }
+
+  return days.map(({ date, displayDate }) => {
+    const daySessions = sessions.filter(s => s.date.split('T')[0] === date);
+
+    return {
+      date,
+      displayDate,
+      listening: daySessions
+        .filter(s => s.skillType === 'listening')
+        .reduce((sum, s) => sum + (s.timeSpentMin || 0), 0),
+      reading: daySessions
+        .filter(s => s.skillType === 'reading')
+        .reduce((sum, s) => sum + (s.timeSpentMin || 0), 0),
+      writing_task1: daySessions
+        .filter(s => s.skillType === 'writing_task1')
+        .reduce((sum, s) => sum + (s.timeSpentMin || 0), 0),
+      writing_task2: daySessions
+        .filter(s => s.skillType === 'writing_task2')
+        .reduce((sum, s) => sum + (s.timeSpentMin || 0), 0),
+      speaking: daySessions
+        .filter(s => s.skillType === 'speaking')
+        .reduce((sum, s) => sum + (s.timeSpentMin || 0), 0),
+    };
+  });
+}
+
+// Helper function to generate daily band score data for time series chart
+function getDailyBandData(sessions: IeltsSession[]) {
+  // Get last 7 days
+  const days: { date: string; displayDate: string }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    days.push({
+      date: date.toISOString().split('T')[0],
+      displayDate: date.toLocaleDateString('en-US', { weekday: 'short' }),
+    });
+  }
+
+  return days.map(({ date, displayDate }) => {
+    const daySessions = sessions.filter(s => s.date.split('T')[0] === date);
+
+    const getAvgBand = (skillType: string) => {
+      const skillSessions = daySessions.filter(s => s.skillType === skillType && s.estimatedBand);
+      if (skillSessions.length === 0) return 0;
+      return skillSessions.reduce((sum, s) => sum + (s.estimatedBand || 0), 0) / skillSessions.length;
+    };
+
+    return {
+      date,
+      displayDate,
+      listening: getAvgBand('listening'),
+      reading: getAvgBand('reading'),
+      writing_task1: getAvgBand('writing_task1'),
+      writing_task2: getAvgBand('writing_task2'),
+      speaking: getAvgBand('speaking'),
+    };
+  });
 }

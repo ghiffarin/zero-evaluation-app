@@ -3,10 +3,11 @@
 import * as React from 'react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Bell, Search, Sun, Moon } from 'lucide-react';
+import { Bell, Search, Sun, Moon, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/avatar';
+import { useTheme } from '@/contexts/theme-context';
 
 // Map paths to page titles
 const pageTitles: Record<string, string> = {
@@ -43,13 +44,26 @@ export interface HeaderProps {
 
 export function Header({ className, userName = 'User' }: HeaderProps) {
   const pathname = usePathname();
-  const [theme, setTheme] = React.useState<'light' | 'dark'>('light');
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const [searchOpen, setSearchOpen] = React.useState(false);
 
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+  // Cycle through themes: light -> dark -> system
+  const cycleTheme = () => {
+    if (theme === 'light') {
+      setTheme('dark');
+    } else if (theme === 'dark') {
+      setTheme('system');
+    } else {
+      setTheme('light');
+    }
+  };
+
+  // Get the appropriate icon based on current theme setting
+  const getThemeIcon = () => {
+    if (theme === 'system') {
+      return <Monitor className="h-5 w-5" />;
+    }
+    return resolvedTheme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />;
   };
 
   const pageTitle = getPageTitle(pathname);
@@ -94,8 +108,8 @@ export function Header({ className, userName = 'User' }: HeaderProps) {
         </div>
 
         {/* Theme toggle */}
-        <Button variant="ghost" size="icon" onClick={toggleTheme}>
-          {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+        <Button variant="ghost" size="icon" onClick={cycleTheme} title={`Theme: ${theme}`}>
+          {getThemeIcon()}
         </Button>
 
         {/* Notifications */}
