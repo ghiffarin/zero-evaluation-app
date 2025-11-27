@@ -39,15 +39,20 @@ interface RequestOptions {
 }
 
 function buildUrl(endpoint: string, params?: RequestOptions['params']): string {
-  const url = new URL(`${API_BASE_URL}${endpoint}`);
+  let url = `${API_BASE_URL}${endpoint}`;
   if (params) {
+    const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) {
-        url.searchParams.append(key, String(value));
+        searchParams.append(key, String(value));
       }
     });
+    const queryString = searchParams.toString();
+    if (queryString) {
+      url += `?${queryString}`;
+    }
   }
-  return url.toString();
+  return url;
 }
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
