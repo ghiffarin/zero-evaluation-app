@@ -71,6 +71,7 @@ interface CareerActivity {
   subcategory?: string;
   targetEntity?: string;
   projectId?: string;
+  jobApplicationId?: string;
   timeSpentMin?: number;
   description?: string;
   outputSummary?: string;
@@ -82,6 +83,7 @@ interface CareerActivity {
   nextStep?: string;
   notes?: string;
   project?: { id: string; name: string };
+  jobApplication?: { id: string; company: string; roleTitle: string };
   logs?: ActivityLog[];
 }
 
@@ -693,6 +695,7 @@ export default function CareerPage() {
       {showActivityModal && (
         <ActivityModal
           activity={editingActivity}
+          applications={applications}
           onClose={() => {
             setShowActivityModal(false);
             setEditingActivity(null);
@@ -809,7 +812,12 @@ function ActivityCard({
             <div className="flex items-center gap-2 flex-wrap">
               <TypeIcon className="h-4 w-4 text-primary" />
               <span className="font-medium">{typeInfo?.label || activity.activityType}</span>
-              {activity.targetEntity && (
+              {activity.jobApplication ? (
+                <Badge variant="info" className="text-xs flex items-center gap-1">
+                  <Building className="h-3 w-3" />
+                  {activity.jobApplication.company}
+                </Badge>
+              ) : activity.targetEntity && (
                 <Badge variant="neutral" className="text-xs">
                   {activity.targetEntity}
                 </Badge>
@@ -1125,10 +1133,12 @@ function ApplicationCard({
 
 function ActivityModal({
   activity,
+  applications,
   onClose,
   onSave,
 }: {
   activity: CareerActivity | null;
+  applications: JobApplication[];
   onClose: () => void;
   onSave: (data: Partial<CareerActivity>) => void;
 }) {
@@ -1137,6 +1147,7 @@ function ActivityModal({
     activityType: activity?.activityType || 'portfolio',
     subcategory: activity?.subcategory || '',
     targetEntity: activity?.targetEntity || '',
+    jobApplicationId: activity?.jobApplicationId || '',
     timeSpentMin: activity?.timeSpentMin || '',
     description: activity?.description || '',
     outputSummary: activity?.outputSummary || '',
@@ -1161,6 +1172,7 @@ function ActivityModal({
       activityType: formData.activityType,
       subcategory: formData.subcategory || undefined,
       targetEntity: formData.targetEntity || undefined,
+      jobApplicationId: formData.jobApplicationId || null,
       timeSpentMin: formData.timeSpentMin ? Number(formData.timeSpentMin) : undefined,
       description: formData.description || undefined,
       outputSummary: formData.outputSummary || undefined,
@@ -1242,6 +1254,35 @@ function ActivityModal({
                   ))}
                 </select>
               </div>
+
+              {applications.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium">Link to Application</label>
+                  <select
+                    value={formData.jobApplicationId}
+                    onChange={(e) => {
+                      const appId = e.target.value;
+                      const selectedApp = applications.find(a => a.id === appId);
+                      setFormData({
+                        ...formData,
+                        jobApplicationId: appId,
+                        targetEntity: selectedApp ? selectedApp.company : formData.targetEntity,
+                      });
+                    }}
+                    className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    <option value="">None (standalone activity)</option>
+                    {applications.map((app) => (
+                      <option key={app.id} value={app.id}>
+                        {app.company} - {app.roleTitle}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Link this activity to a job application
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="text-sm font-medium">Target Entity</label>

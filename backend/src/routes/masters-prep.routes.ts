@@ -14,6 +14,11 @@ import {
   getNoteById,
   updateNote,
   deleteNote,
+  createUniversity,
+  getAllUniversities,
+  getUniversityById,
+  updateUniversity,
+  deleteUniversity,
 } from '../controllers/masters-prep.controller.js';
 
 const router = Router();
@@ -29,6 +34,13 @@ router.post('/notes', createNote);
 router.get('/notes/:id', getNoteById);
 router.put('/notes/:id', updateNote);
 router.delete('/notes/:id', deleteNote);
+
+// Universities
+router.get('/universities', getAllUniversities);
+router.post('/universities', createUniversity);
+router.get('/universities/:id', getUniversityById);
+router.put('/universities/:id', updateUniversity);
+router.delete('/universities/:id', deleteUniversity);
 
 // Prep Items
 router.get('/', getAllPrepItems);

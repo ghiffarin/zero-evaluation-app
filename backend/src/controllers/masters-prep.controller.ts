@@ -220,3 +220,16 @@ export const getAllNotes = noteCrud.getAll;
 export const getNoteById = noteCrud.getOne;
 export const updateNote = noteCrud.update;
 export const deleteNote = noteCrud.delete;
+
+// University CRUD
+const universityCrud = createCrudController({
+  model: 'university',
+  orderBy: [{ priority: 'asc' }, { universityName: 'asc' }],
+  searchFields: ['universityName', 'country', 'programName', 'specialization', 'notes'],
+});
+
+export const createUniversity = universityCrud.create;
+export const getAllUniversities = universityCrud.getAll;
+export const getUniversityById = universityCrud.getOne;
+export const updateUniversity = universityCrud.update;
+export const deleteUniversity = universityCrud.delete;

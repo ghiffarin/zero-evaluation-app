@@ -311,6 +311,14 @@ export const api = {
       update: (id: string, data: unknown) => api.put<unknown>(`/masters-prep/notes/${id}`, data),
       delete: (id: string) => api.delete<unknown>(`/masters-prep/notes/${id}`),
     },
+    universities: {
+      list: (params?: { page?: number; limit?: number; search?: string }) =>
+        api.paginated<unknown>('/masters-prep/universities', params),
+      get: (id: string) => api.get<unknown>(`/masters-prep/universities/${id}`),
+      create: (data: unknown) => api.post<unknown>('/masters-prep/universities', data),
+      update: (id: string, data: unknown) => api.put<unknown>(`/masters-prep/universities/${id}`, data),
+      delete: (id: string) => api.delete<unknown>(`/masters-prep/universities/${id}`),
+    },
   },
 
   // Goals endpoints

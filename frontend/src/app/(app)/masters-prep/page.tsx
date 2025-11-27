@@ -121,6 +121,36 @@ interface QuickNote {
   createdAt: string;
 }
 
+interface University {
+  id: string;
+  universityName: string;
+  country?: string;
+  programName?: string;
+  specialization?: string;
+  programLength?: string;
+  tuitionPerYear?: string;
+  livingCostPerYear?: string;
+  admissionRequirements?: string;
+  englishTest?: string;
+  applicationDeadline?: string;
+  fundingOptions?: string;
+  notes?: string;
+  priority?: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const UNIVERSITY_STATUSES = [
+  { value: 'researching', label: 'Researching' },
+  { value: 'shortlisted', label: 'Shortlisted' },
+  { value: 'applying', label: 'Applying' },
+  { value: 'applied', label: 'Applied' },
+  { value: 'accepted', label: 'Accepted' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'enrolled', label: 'Enrolled' },
+] as const;
+
 const CATEGORIES = [
   { value: 'ielts', label: 'IELTS', icon: BookOpen },
   { value: 'journal', label: 'Journal/Publication', icon: FileText },
@@ -151,23 +181,27 @@ export default function MastersPrepPage() {
   const [stats, setStats] = React.useState<PrepStats | null>(null);
   const [readinessBreakdown, setReadinessBreakdown] = React.useState<ReadinessBreakdown | null>(null);
   const [notes, setNotes] = React.useState<QuickNote[]>([]);
+  const [universities, setUniversities] = React.useState<University[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   // Modal states
   const [showItemModal, setShowItemModal] = React.useState(false);
   const [showSessionModal, setShowSessionModal] = React.useState(false);
   const [showNoteModal, setShowNoteModal] = React.useState(false);
+  const [showUniversityModal, setShowUniversityModal] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<PrepItem | null>(null);
   const [editingNote, setEditingNote] = React.useState<QuickNote | null>(null);
+  const [editingUniversity, setEditingUniversity] = React.useState<University | null>(null);
   const [sessionItemId, setSessionItemId] = React.useState<string | null>(null);
 
   // Filters & View
-  const [activeTab, setActiveTab] = React.useState<'items' | 'readiness' | 'notes'>('items');
+  const [activeTab, setActiveTab] = React.useState<'items' | 'readiness' | 'notes' | 'universities'>('items');
   const [filterCategory, setFilterCategory] = React.useState<string>('all');
   const [filterStatus, setFilterStatus] = React.useState<string>('all');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [expandedItem, setExpandedItem] = React.useState<string | null>(null);
   const [noteSearchQuery, setNoteSearchQuery] = React.useState('');
+  const [universitySearchQuery, setUniversitySearchQuery] = React.useState('');
 
   // Fetch data
   React.useEffect(() => {
@@ -176,16 +210,18 @@ export default function MastersPrepPage() {
     async function fetchData() {
       try {
         setLoading(true);
-        const [itemsRes, statsRes, readinessRes, notesRes] = await Promise.all([
+        const [itemsRes, statsRes, readinessRes, notesRes, universitiesRes] = await Promise.all([
           api.mastersPrep.list({ limit: 100 }),
           api.mastersPrep.stats(),
           api.mastersPrep.readiness(),
           api.mastersPrep.notes.list({ limit: 100 }),
+          api.mastersPrep.universities.list({ limit: 100 }),
         ]);
         setItems((itemsRes as any).data || []);
         setStats((statsRes as any).data || null);
         setReadinessBreakdown((readinessRes as any).data || null);
         setNotes((notesRes as any).data || []);
+        setUniversities((universitiesRes as any).data || []);
       } catch (err) {
         console.error('Failed to fetch masters prep data:', err);
       } finally {
@@ -199,16 +235,18 @@ export default function MastersPrepPage() {
   // Refresh stats
   const refreshData = async () => {
     try {
-      const [itemsRes, statsRes, readinessRes, notesRes] = await Promise.all([
+      const [itemsRes, statsRes, readinessRes, notesRes, universitiesRes] = await Promise.all([
         api.mastersPrep.list({ limit: 100 }),
         api.mastersPrep.stats(),
         api.mastersPrep.readiness(),
         api.mastersPrep.notes.list({ limit: 100 }),
+        api.mastersPrep.universities.list({ limit: 100 }),
       ]);
       setItems((itemsRes as any).data || []);
       setStats((statsRes as any).data || null);
       setReadinessBreakdown((readinessRes as any).data || null);
       setNotes((notesRes as any).data || []);
+      setUniversities((universitiesRes as any).data || []);
     } catch (err) {
       console.error('Failed to refresh data:', err);
     }
@@ -292,6 +330,38 @@ export default function MastersPrepPage() {
     }
   };
 
+  // University CRUD handlers
+  const handleCreateUniversity = async (data: Partial<University>) => {
+    try {
+      const res = await api.mastersPrep.universities.create(data);
+      setUniversities((prev) => [(res as any).data, ...prev]);
+      setShowUniversityModal(false);
+    } catch (err) {
+      console.error('Failed to create university:', err);
+    }
+  };
+
+  const handleUpdateUniversity = async (id: string, data: Partial<University>) => {
+    try {
+      const res = await api.mastersPrep.universities.update(id, data);
+      setUniversities((prev) => prev.map((u) => (u.id === id ? (res as any).data : u)));
+      setEditingUniversity(null);
+      setShowUniversityModal(false);
+    } catch (err) {
+      console.error('Failed to update university:', err);
+    }
+  };
+
+  const handleDeleteUniversity = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this university?')) return;
+    try {
+      await api.mastersPrep.universities.delete(id);
+      setUniversities((prev) => prev.filter((u) => u.id !== id));
+    } catch (err) {
+      console.error('Failed to delete university:', err);
+    }
+  };
+
   // Filter items
   const filteredItems = items.filter((item) => {
     const matchesCategory = filterCategory === 'all' || item.category === filterCategory;
@@ -310,6 +380,18 @@ export default function MastersPrepPage() {
     return (
       note.title.toLowerCase().includes(noteSearchQuery.toLowerCase()) ||
       note.description?.toLowerCase().includes(noteSearchQuery.toLowerCase())
+    );
+  });
+
+  // Filter universities
+  const filteredUniversities = universities.filter((uni) => {
+    if (!universitySearchQuery) return true;
+    const query = universitySearchQuery.toLowerCase();
+    return (
+      uni.universityName.toLowerCase().includes(query) ||
+      uni.country?.toLowerCase().includes(query) ||
+      uni.programName?.toLowerCase().includes(query) ||
+      uni.specialization?.toLowerCase().includes(query)
     );
   });
 
@@ -410,89 +492,6 @@ export default function MastersPrepPage() {
               icon={<Clock className="h-5 w-5" />}
             />
           </div>
-
-          {/* Progress by Priority & Status */}
-          <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-2">
-            {/* Priority Distribution */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">By Priority</CardTitle>
-                  <span className="text-sm text-muted-foreground">
-                    {stats.byPriority.high + stats.byPriority.medium + stats.byPriority.low} items
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {[
-                  { label: 'High Priority', badge: 'P1', count: stats.byPriority.high, color: 'bg-red-500', textColor: 'text-red-500 dark:text-red-400' },
-                  { label: 'Medium Priority', badge: 'P2', count: stats.byPriority.medium, color: 'bg-yellow-500', textColor: 'text-yellow-500 dark:text-yellow-400' },
-                  { label: 'Low Priority', badge: 'P3', count: stats.byPriority.low, color: 'bg-green-500', textColor: 'text-green-500 dark:text-green-400' },
-                ].map(({ label, badge, count, color, textColor }) => {
-                  const total = stats.byPriority.high + stats.byPriority.medium + stats.byPriority.low;
-                  const percentage = total > 0 ? (count / total) * 100 : 0;
-                  return (
-                    <div key={badge} className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm flex items-center gap-2">
-                          <span className={`inline-flex items-center justify-center w-6 h-5 rounded text-xs font-medium ${color} text-white`}>
-                            {badge}
-                          </span>
-                          <span>{label}</span>
-                        </span>
-                        <span className="font-medium tabular-nums">{count}</span>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${color}`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-
-            {/* Status Distribution */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">By Status</CardTitle>
-                  <span className="text-sm text-muted-foreground">{stats.totalItems} items</span>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {[
-                  { value: 'not_started', label: 'Not Started', color: 'bg-gray-400' },
-                  { value: 'in_progress', label: 'In Progress', color: 'bg-blue-500' },
-                  { value: 'halfway', label: 'Halfway', color: 'bg-yellow-500' },
-                  { value: 'almost_done', label: 'Almost Done', color: 'bg-orange-500' },
-                  { value: 'completed', label: 'Completed', color: 'bg-green-500' },
-                ].map(({ value, label, color }) => {
-                  const count = stats.byStatus[value] || 0;
-                  const percentage = stats.totalItems > 0 ? (count / stats.totalItems) * 100 : 0;
-                  return (
-                    <div key={value} className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm flex items-center gap-2">
-                          <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
-                          <span>{label}</span>
-                        </span>
-                        <span className="font-medium tabular-nums">{count}</span>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${color}`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          </div>
         </PageSection>
       )}
 
@@ -527,6 +526,16 @@ export default function MastersPrepPage() {
           onClick={() => setActiveTab('notes')}
         >
           Quick Notes ({notes.length})
+        </button>
+        <button
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'universities'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+          onClick={() => setActiveTab('universities')}
+        >
+          Universities ({universities.length})
         </button>
       </div>
 
@@ -793,6 +802,126 @@ export default function MastersPrepPage() {
         </>
       )}
 
+      {/* Universities Tab */}
+      {activeTab === 'universities' && (
+        <>
+          {/* Search and Add */}
+          <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search universities..."
+                value={universitySearchQuery}
+                onChange={(e) => setUniversitySearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button
+              onClick={() => {
+                setEditingUniversity(null);
+                setShowUniversityModal(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add University
+            </Button>
+          </div>
+
+          {/* Universities Table */}
+          {filteredUniversities.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Building className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  {universities.length === 0 ? 'No universities added yet.' : 'No universities match your search.'}
+                </p>
+                {universities.length === 0 && (
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => {
+                      setEditingUniversity(null);
+                      setShowUniversityModal(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Your First University
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 text-sm font-medium">University</th>
+                    <th className="text-left p-3 text-sm font-medium">Country</th>
+                    <th className="text-left p-3 text-sm font-medium">Program</th>
+                    <th className="text-left p-3 text-sm font-medium">Length</th>
+                    <th className="text-left p-3 text-sm font-medium">Tuition/yr</th>
+                    <th className="text-left p-3 text-sm font-medium">Living/yr</th>
+                    <th className="text-left p-3 text-sm font-medium">Deadline</th>
+                    <th className="text-left p-3 text-sm font-medium">Status</th>
+                    <th className="text-center p-3 text-sm font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUniversities.map((uni) => (
+                    <tr key={uni.id} className="border-b hover:bg-muted/30">
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          {uni.priority && (
+                            <Badge
+                              variant={uni.priority === 1 ? 'error' : uni.priority === 2 ? 'warning' : 'success'}
+                              className="text-xs"
+                            >
+                              P{uni.priority}
+                            </Badge>
+                          )}
+                          <span className="font-medium">{uni.universityName}</span>
+                        </div>
+                        {uni.specialization && (
+                          <p className="text-xs text-muted-foreground mt-1">{uni.specialization}</p>
+                        )}
+                      </td>
+                      <td className="p-3 text-sm">{uni.country || '-'}</td>
+                      <td className="p-3 text-sm">{uni.programName || '-'}</td>
+                      <td className="p-3 text-sm">{uni.programLength || '-'}</td>
+                      <td className="p-3 text-sm">{uni.tuitionPerYear || '-'}</td>
+                      <td className="p-3 text-sm">{uni.livingCostPerYear || '-'}</td>
+                      <td className="p-3 text-sm">{uni.applicationDeadline || '-'}</td>
+                      <td className="p-3">
+                        <Badge variant={getUniversityStatusVariant(uni.status)}>
+                          {UNIVERSITY_STATUSES.find(s => s.value === uni.status)?.label || uni.status}
+                        </Badge>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingUniversity(uni);
+                              setShowUniversityModal(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteUniversity(uni.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
       {/* Item Modal */}
       {showItemModal && (
         <PrepItemModal
@@ -835,6 +964,24 @@ export default function MastersPrepPage() {
               handleUpdateNote(editingNote.id, data);
             } else {
               handleCreateNote(data);
+            }
+          }}
+        />
+      )}
+
+      {/* University Modal */}
+      {showUniversityModal && (
+        <UniversityModal
+          university={editingUniversity}
+          onClose={() => {
+            setShowUniversityModal(false);
+            setEditingUniversity(null);
+          }}
+          onSave={(data) => {
+            if (editingUniversity) {
+              handleUpdateUniversity(editingUniversity.id, data);
+            } else {
+              handleCreateUniversity(data);
             }
           }}
         />
@@ -1469,6 +1616,263 @@ function NoteModal({
   );
 }
 
+function UniversityModal({
+  university,
+  onClose,
+  onSave,
+}: {
+  university: University | null;
+  onClose: () => void;
+  onSave: (data: Partial<University>) => void;
+}) {
+  const [formData, setFormData] = React.useState({
+    universityName: university?.universityName || '',
+    country: university?.country || '',
+    programName: university?.programName || '',
+    specialization: university?.specialization || '',
+    programLength: university?.programLength || '',
+    tuitionPerYear: university?.tuitionPerYear || '',
+    livingCostPerYear: university?.livingCostPerYear || '',
+    admissionRequirements: university?.admissionRequirements || '',
+    englishTest: university?.englishTest || '',
+    applicationDeadline: university?.applicationDeadline || '',
+    fundingOptions: university?.fundingOptions || '',
+    notes: university?.notes || '',
+    priority: university?.priority?.toString() || '',
+    status: university?.status || 'researching',
+  });
+  const [saving, setSaving] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState(0);
+
+  const tabs = ['Basic', 'Costs', 'Requirements', 'Notes'];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    await onSave({
+      universityName: formData.universityName,
+      country: formData.country || undefined,
+      programName: formData.programName || undefined,
+      specialization: formData.specialization || undefined,
+      programLength: formData.programLength || undefined,
+      tuitionPerYear: formData.tuitionPerYear || undefined,
+      livingCostPerYear: formData.livingCostPerYear || undefined,
+      admissionRequirements: formData.admissionRequirements || undefined,
+      englishTest: formData.englishTest || undefined,
+      applicationDeadline: formData.applicationDeadline || undefined,
+      fundingOptions: formData.fundingOptions || undefined,
+      notes: formData.notes || undefined,
+      priority: formData.priority ? Number(formData.priority) : undefined,
+      status: formData.status,
+    });
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+      <div className="bg-background rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto m-4">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">{university ? 'Edit University' : 'Add University'}</h2>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b">
+          {tabs.map((tab, index) => (
+            <button
+              key={tab}
+              type="button"
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === index
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setActiveTab(index)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {/* Basic Tab */}
+          {activeTab === 0 && (
+            <>
+              <div>
+                <label className="text-sm font-medium">University Name *</label>
+                <Input
+                  value={formData.universityName}
+                  onChange={(e) => setFormData({ ...formData, universityName: e.target.value })}
+                  placeholder="e.g., MIT, Stanford, ETH Zurich"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Country</label>
+                  <Input
+                    value={formData.country}
+                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                    placeholder="e.g., USA, Germany"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Program Length</label>
+                  <Input
+                    value={formData.programLength}
+                    onChange={(e) => setFormData({ ...formData, programLength: e.target.value })}
+                    placeholder="e.g., 2 years"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Program Name</label>
+                <Input
+                  value={formData.programName}
+                  onChange={(e) => setFormData({ ...formData, programName: e.target.value })}
+                  placeholder="e.g., M.Sc. Computer Science"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Specialization</label>
+                <Input
+                  value={formData.specialization}
+                  onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
+                  placeholder="e.g., Machine Learning, Sustainability"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Priority</label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                    className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    <option value="">Select priority...</option>
+                    <option value="1">1 - Top Choice</option>
+                    <option value="2">2 - Good Option</option>
+                    <option value="3">3 - Backup</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    {UNIVERSITY_STATUSES.map(({ value, label }) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Costs Tab */}
+          {activeTab === 1 && (
+            <>
+              <div>
+                <label className="text-sm font-medium">Tuition (per year)</label>
+                <Input
+                  value={formData.tuitionPerYear}
+                  onChange={(e) => setFormData({ ...formData, tuitionPerYear: e.target.value })}
+                  placeholder="e.g., €15,000, $50,000"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Living Cost (per year)</label>
+                <Input
+                  value={formData.livingCostPerYear}
+                  onChange={(e) => setFormData({ ...formData, livingCostPerYear: e.target.value })}
+                  placeholder="e.g., €12,000, $25,000"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Funding Options</label>
+                <textarea
+                  value={formData.fundingOptions}
+                  onChange={(e) => setFormData({ ...formData, fundingOptions: e.target.value })}
+                  className="w-full min-h-[120px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+                  placeholder="Scholarships, assistantships, loans..."
+                />
+              </div>
+            </>
+          )}
+
+          {/* Requirements Tab */}
+          {activeTab === 2 && (
+            <>
+              <div>
+                <label className="text-sm font-medium">Application Deadline</label>
+                <Input
+                  value={formData.applicationDeadline}
+                  onChange={(e) => setFormData({ ...formData, applicationDeadline: e.target.value })}
+                  placeholder="e.g., January 15, 2025"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">English Test Requirements</label>
+                <Input
+                  value={formData.englishTest}
+                  onChange={(e) => setFormData({ ...formData, englishTest: e.target.value })}
+                  placeholder="e.g., IELTS 7.0, TOEFL 100"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Admission Requirements</label>
+                <textarea
+                  value={formData.admissionRequirements}
+                  onChange={(e) => setFormData({ ...formData, admissionRequirements: e.target.value })}
+                  className="w-full min-h-[150px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+                  placeholder="GPA, GRE, documents needed..."
+                />
+              </div>
+            </>
+          )}
+
+          {/* Notes Tab */}
+          {activeTab === 3 && (
+            <div>
+              <label className="text-sm font-medium">Notes</label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                className="w-full min-h-[200px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+                placeholder="Additional notes, pros/cons, research findings..."
+              />
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {university ? 'Update' : 'Add'} University
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // Helper functions
 function getStatusBadgeVariant(status: string): 'success' | 'warning' | 'error' | 'info' | 'neutral' {
   switch (status) {
@@ -1480,6 +1884,23 @@ function getStatusBadgeVariant(status: string): 'success' | 'warning' | 'error' 
       return 'warning';
     case 'in_progress':
       return 'info';
+    default:
+      return 'neutral';
+  }
+}
+
+function getUniversityStatusVariant(status: string): 'success' | 'warning' | 'error' | 'info' | 'neutral' {
+  switch (status) {
+    case 'accepted':
+    case 'enrolled':
+      return 'success';
+    case 'applied':
+    case 'applying':
+      return 'info';
+    case 'shortlisted':
+      return 'warning';
+    case 'rejected':
+      return 'error';
     default:
       return 'neutral';
   }

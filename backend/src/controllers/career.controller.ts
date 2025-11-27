@@ -6,7 +6,11 @@ import { createCrudController } from '../services/crud.service.js';
 // Career Activities
 const activityCrud = createCrudController({
   model: 'careerActivity',
-  include: { project: true, logs: { orderBy: { date: 'desc' } } },
+  include: {
+    project: true,
+    jobApplication: true,
+    logs: { orderBy: { date: 'desc' } }
+  },
   orderBy: { date: 'desc' },
   searchFields: ['targetEntity', 'description', 'outputSummary'],
 });
@@ -155,6 +159,12 @@ export const deleteActivityLog = async (req: Request, res: Response): Promise<vo
 // Job Applications
 const applicationCrud = createCrudController({
   model: 'jobApplication',
+  include: {
+    activities: {
+      orderBy: { date: 'desc' },
+      include: { logs: { orderBy: { date: 'desc' } } }
+    }
+  },
   orderBy: { createdAt: 'desc' },
   searchFields: ['company', 'roleTitle', 'notes'],
   dateField: 'appliedDate',
