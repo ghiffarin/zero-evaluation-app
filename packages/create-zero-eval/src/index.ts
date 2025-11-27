@@ -9,7 +9,9 @@ import {
   isInstalled,
   loadConfig,
   getDefaultInstallPath,
+  getPostgresInstallInstructions,
   type InstallProgress,
+  type RequirementsCheck,
 } from '@zero-eval/core';
 
 const BANNER = `
@@ -36,10 +38,7 @@ const BANNER = `
 
 interface InstallAnswers {
   installPath: string;
-  frontendPort: number;
-  backendPort: number;
-  dbPort: number;
-  startNow: boolean;
+  useAutoConfig: boolean;
 }
 
 async function promptForConfig(): Promise<InstallAnswers> {
@@ -64,50 +63,107 @@ async function promptForConfig(): Promise<InstallAnswers> {
       },
     },
     {
-      type: 'number',
-      name: 'frontendPort',
-      message: 'Frontend port:',
-      default: 3000,
-      validate: (input: number) => {
-        if (input < 1024 || input > 65535) {
-          return 'Please enter a port between 1024 and 65535';
-        }
-        return true;
-      },
-    },
-    {
-      type: 'number',
-      name: 'backendPort',
-      message: 'Backend API port:',
-      default: 3001,
-      validate: (input: number) => {
-        if (input < 1024 || input > 65535) {
-          return 'Please enter a port between 1024 and 65535';
-        }
-        return true;
-      },
-    },
-    {
-      type: 'number',
-      name: 'dbPort',
-      message: 'Database port:',
-      default: 5432,
-      validate: (input: number) => {
-        if (input < 1024 || input > 65535) {
-          return 'Please enter a port between 1024 and 65535';
-        }
-        return true;
-      },
-    },
-    {
       type: 'confirm',
-      name: 'startNow',
-      message: 'Start services after installation?',
+      name: 'useAutoConfig',
+      message: 'Use automatic port configuration? (recommended)',
       default: true,
     },
   ]);
 
   return answers;
+}
+
+async function waitForPostgresInstall(): Promise<boolean> {
+  const instructions = getPostgresInstallInstructions();
+  console.log(chalk.yellow(instructions));
+
+  const { ready } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'ready',
+      message: 'Have you installed PostgreSQL and started the service?',
+      default: false,
+    },
+  ]);
+
+  return ready;
+}
+
+async function checkAndWaitForPostgres(requirements: RequirementsCheck): Promise<boolean> {
+  // If PostgreSQL is already running, we're good
+  if (requirements.postgresInstalled && requirements.postgresRunning) {
+    return true;
+  }
+
+  // If not installed, show installation instructions
+  if (!requirements.postgresInstalled) {
+    console.log(chalk.yellow('\n⚠️  PostgreSQL is not installed on your system.'));
+
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    while (attempts < maxAttempts) {
+      const ready = await waitForPostgresInstall();
+
+      if (!ready) {
+        console.log(chalk.dim('\nInstallation cancelled.'));
+        return false;
+      }
+
+      // Re-check requirements
+      const newRequirements = await checkRequirements();
+
+      if (newRequirements.postgresInstalled && newRequirements.postgresRunning) {
+        console.log(chalk.green('\n✓ PostgreSQL is now installed and running!'));
+        return true;
+      }
+
+      if (newRequirements.postgresInstalled && !newRequirements.postgresRunning) {
+        console.log(chalk.yellow('\n⚠️  PostgreSQL is installed but not running.'));
+        console.log(chalk.dim('Please start the PostgreSQL service and try again.\n'));
+      } else {
+        console.log(chalk.yellow('\n⚠️  PostgreSQL is still not detected.'));
+        console.log(chalk.dim('Make sure to add PostgreSQL to your PATH.\n'));
+      }
+
+      attempts++;
+    }
+
+    console.log(chalk.red('\n❌ Unable to detect PostgreSQL after multiple attempts.'));
+    console.log(chalk.dim('Please ensure PostgreSQL is properly installed and in your PATH.'));
+    return false;
+  }
+
+  // Installed but not running
+  if (!requirements.postgresRunning) {
+    console.log(chalk.yellow('\n⚠️  PostgreSQL is installed but not running.'));
+    console.log(chalk.dim('Please start the PostgreSQL service.\n'));
+
+    const { ready } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'ready',
+        message: 'Have you started the PostgreSQL service?',
+        default: false,
+      },
+    ]);
+
+    if (!ready) {
+      console.log(chalk.dim('\nInstallation cancelled.'));
+      return false;
+    }
+
+    const newRequirements = await checkRequirements();
+    if (newRequirements.postgresRunning) {
+      console.log(chalk.green('\n✓ PostgreSQL is now running!'));
+      return true;
+    }
+
+    console.log(chalk.red('\n❌ PostgreSQL is still not running.'));
+    return false;
+  }
+
+  return true;
 }
 
 async function checkExistingInstallation(): Promise<boolean> {
@@ -153,17 +209,34 @@ async function main(): Promise<void> {
 
   const checkMark = chalk.green('✓');
   const crossMark = chalk.red('✗');
+  const warningMark = chalk.yellow('⚠');
 
-  console.log(`  ${requirements.dockerAvailable ? checkMark : crossMark} Docker`);
-  console.log(`  ${requirements.composeAvailable ? checkMark : crossMark} Docker Compose`);
-  console.log(`  ${requirements.gitAvailable ? checkMark : crossMark} Git`);
+  // Node.js check
+  console.log(`  ${requirements.nodeOk ? checkMark : crossMark} Node.js ${requirements.nodeVersion} ${requirements.nodeOk ? '' : '(v18+ required)'}`);
 
-  if (requirements.errors.length > 0) {
-    console.log(chalk.red('\n❌ Missing requirements:\n'));
-    requirements.errors.forEach((error) => {
-      console.log(chalk.red(`   • ${error}`));
-    });
-    console.log(chalk.dim('\nPlease install the missing requirements and try again.'));
+  // PostgreSQL check
+  if (requirements.postgresInstalled && requirements.postgresRunning) {
+    console.log(`  ${checkMark} PostgreSQL ${requirements.postgresVersion || ''}`);
+  } else if (requirements.postgresInstalled) {
+    console.log(`  ${warningMark} PostgreSQL (not running)`);
+  } else {
+    console.log(`  ${crossMark} PostgreSQL`);
+  }
+
+  // Git check (optional)
+  console.log(`  ${requirements.gitAvailable ? checkMark : warningMark} Git ${requirements.gitAvailable ? '' : '(optional)'}`);
+
+  // Check Node.js version first
+  if (!requirements.nodeOk) {
+    console.log(chalk.red('\n❌ Node.js 18 or higher is required.'));
+    console.log(chalk.dim(`   Current version: ${requirements.nodeVersion}`));
+    console.log(chalk.dim('   Please update Node.js and try again.'));
+    process.exit(1);
+  }
+
+  // Handle PostgreSQL installation/startup
+  const postgresReady = await checkAndWaitForPostgres(requirements);
+  if (!postgresReady) {
     process.exit(1);
   }
 
@@ -172,12 +245,11 @@ async function main(): Promise<void> {
   // Get configuration
   const answers = await promptForConfig();
 
-  // Confirm installation
-  console.log(chalk.cyan('\n📦 Installation Summary\n'));
-  console.log(`  Location:       ${chalk.white(answers.installPath)}`);
-  console.log(`  Frontend:       ${chalk.white(`http://localhost:${answers.frontendPort}`)}`);
-  console.log(`  Backend API:    ${chalk.white(`http://localhost:${answers.backendPort}`)}`);
-  console.log(`  Database:       ${chalk.white(`localhost:${answers.dbPort}`)}`);
+  // Show what will happen
+  console.log(chalk.cyan('\n📦 Installation Plan\n'));
+  console.log(`  Location:     ${chalk.white(answers.installPath)}`);
+  console.log(`  Database:     ${chalk.white('PostgreSQL (local)')}`);
+  console.log(`  Ports:        ${chalk.white(answers.useAutoConfig ? 'Auto-detect available ports' : 'Use defaults (3000, 3001)')}`);
 
   const { confirm } = await inquirer.prompt([
     {
@@ -201,10 +273,9 @@ async function main(): Promise<void> {
     const config = await install(
       {
         installPath: answers.installPath,
-        frontendPort: answers.frontendPort,
-        backendPort: answers.backendPort,
-        dbPort: answers.dbPort,
-        skipDocker: !answers.startNow,
+        // Let the installer auto-detect available ports
+        frontendPort: answers.useAutoConfig ? undefined : 3000,
+        backendPort: answers.useAutoConfig ? undefined : 3001,
       },
       (progress: InstallProgress) => {
         spinner.text = progress.message;
@@ -216,22 +287,19 @@ async function main(): Promise<void> {
     // Success message
     console.log(chalk.green('\n✨ Zero Evaluation has been installed successfully!\n'));
 
-    if (answers.startNow) {
-      console.log(chalk.cyan('🚀 Your application is starting up...\n'));
-      console.log('   Please wait a moment for all services to initialize.');
-      console.log('   First-time startup may take 2-3 minutes to build.\n');
-    }
+    console.log(chalk.white('📱 Your application is ready:'));
+    console.log(chalk.blue(`   Frontend:  http://localhost:${config.frontendPort}`));
+    console.log(chalk.blue(`   Backend:   http://localhost:${config.backendPort}`));
+    console.log(chalk.dim(`   Database:  ${config.dbName}\n`));
 
-    console.log(chalk.white('📱 Access your app at:'));
-    console.log(chalk.blue(`   http://localhost:${config.frontendPort}\n`));
+    console.log(chalk.white('🚀 To start your application:'));
+    console.log(chalk.cyan(`   cd ${config.installPath}`));
+    console.log(chalk.cyan('   npm run dev\n'));
 
-    console.log(chalk.white('🔧 Manage your installation:'));
-    console.log(chalk.dim('   npx zero-eval start     Start all services'));
-    console.log(chalk.dim('   npx zero-eval stop      Stop all services'));
-    console.log(chalk.dim('   npx zero-eval status    Check service health'));
-    console.log(chalk.dim('   npx zero-eval logs      View logs'));
-    console.log(chalk.dim('   npx zero-eval backup    Create a backup'));
-    console.log(chalk.dim('   npx zero-eval --help    See all commands\n'));
+    console.log(chalk.white('🔧 Available commands:'));
+    console.log(chalk.dim('   npm run dev           Start both frontend and backend'));
+    console.log(chalk.dim('   npm run dev:frontend  Start frontend only'));
+    console.log(chalk.dim('   npm run dev:backend   Start backend only\n'));
 
     console.log(chalk.dim('Configuration saved to: ~/.zero-eval/config.json'));
     console.log(chalk.dim(`Installation directory: ${config.installPath}\n`));

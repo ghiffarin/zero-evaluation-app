@@ -8,10 +8,20 @@ import {
 import {
   createConfig,
   saveConfig,
-  generateEnvContent,
+  generateBackendEnvContent,
+  generateFrontendEnvContent,
   getDefaultInstallPath,
+  deleteConfig,
 } from './config.js';
-import { isDockerAvailable, isDockerComposeAvailable, startServices } from './docker.js';
+import {
+  checkPostgresInstalled,
+  checkPostgresRunning,
+  createDatabase,
+  databaseExists,
+  getPostgresInstallInstructions,
+  testDatabaseConnection,
+} from './postgres.js';
+import { findAvailablePorts } from './ports.js';
 
 // GitHub repository for cloning (fallback)
 const REPO_URL = 'https://github.com/ghiffarin/zero-evaluation-app.git';
@@ -24,37 +34,73 @@ export interface InstallProgress {
 
 export type ProgressCallback = (progress: InstallProgress) => void;
 
-/**
- * Check system requirements
- */
-export async function checkRequirements(): Promise<{
-  dockerAvailable: boolean;
-  composeAvailable: boolean;
+export interface RequirementsCheck {
+  nodeVersion: string;
+  nodeOk: boolean;
+  postgresInstalled: boolean;
+  postgresRunning: boolean;
+  postgresVersion?: string;
   gitAvailable: boolean;
   errors: string[];
-}> {
+  instructions?: string;
+}
+
+/**
+ * Check Node.js version
+ */
+async function checkNodeVersion(): Promise<{ version: string; ok: boolean }> {
+  try {
+    const { stdout } = await execa('node', ['--version'], { stdio: 'pipe' });
+    const version = stdout.trim().replace('v', '');
+    const major = parseInt(version.split('.')[0], 10);
+    return { version, ok: major >= 18 };
+  } catch {
+    return { version: 'unknown', ok: false };
+  }
+}
+
+/**
+ * Check system requirements for local PostgreSQL installation
+ */
+export async function checkRequirements(): Promise<RequirementsCheck> {
   const errors: string[] = [];
 
-  const dockerAvailable = await isDockerAvailable();
-  if (!dockerAvailable) {
-    errors.push('Docker is not installed or not running. Please install Docker Desktop from https://docker.com');
+  // Check Node.js
+  const nodeCheck = await checkNodeVersion();
+  if (!nodeCheck.ok) {
+    errors.push(`Node.js 18 or higher is required. Current version: ${nodeCheck.version}`);
   }
 
-  const composeAvailable = await isDockerComposeAvailable();
-  if (!composeAvailable && dockerAvailable) {
-    errors.push('Docker Compose is not available. Please update Docker Desktop to the latest version.');
+  // Check PostgreSQL
+  const pgInfo = await checkPostgresInstalled();
+
+  let instructions: string | undefined;
+  if (!pgInfo.installed) {
+    instructions = getPostgresInstallInstructions();
+    errors.push('PostgreSQL is not installed.');
+  } else if (!pgInfo.running) {
+    errors.push('PostgreSQL is installed but not running. Please start the PostgreSQL service.');
   }
 
-  // Git is optional now - we can copy from local source
+  // Check Git (optional)
   let gitAvailable = false;
   try {
     await execa('git', ['--version'], { stdio: 'pipe' });
     gitAvailable = true;
   } catch {
-    // Git is not required if we have local source
+    // Git is optional - we can copy from local source
   }
 
-  return { dockerAvailable, composeAvailable, gitAvailable, errors };
+  return {
+    nodeVersion: nodeCheck.version,
+    nodeOk: nodeCheck.ok,
+    postgresInstalled: pgInfo.installed,
+    postgresRunning: pgInfo.running,
+    postgresVersion: pgInfo.version,
+    gitAvailable,
+    errors,
+    instructions,
+  };
 }
 
 /**
@@ -62,8 +108,6 @@ export async function checkRequirements(): Promise<{
  * This looks for the source relative to the packages folder
  */
 function findSourceDirectory(): string | null {
-  // Try to find source relative to this file's location
-  // packages/core/dist/installer.js -> core -> packages -> root
   try {
     const currentDir = __dirname;
     const packagesDir = path.resolve(currentDir, '..', '..');
@@ -71,8 +115,7 @@ function findSourceDirectory(): string | null {
 
     // Check if this is the project root
     if (fs.existsSync(path.join(rootDir, 'backend')) &&
-        fs.existsSync(path.join(rootDir, 'frontend')) &&
-        fs.existsSync(path.join(rootDir, 'docker-compose.yml'))) {
+        fs.existsSync(path.join(rootDir, 'frontend'))) {
       return rootDir;
     }
   } catch {
@@ -95,7 +138,7 @@ async function copyProjectFiles(installPath: string, onProgress?: ProgressCallba
 
   if (sourceDir) {
     // Copy from local source
-    const filesToCopy = ['backend', 'frontend', 'docker-compose.yml', '.env.example'];
+    const filesToCopy = ['backend', 'frontend', 'package.json'];
 
     await fs.ensureDir(installPath);
 
@@ -140,158 +183,98 @@ async function copyProjectFiles(installPath: string, onProgress?: ProgressCallba
 }
 
 /**
- * Create docker-compose.yml with the right configuration
+ * Install npm dependencies
  */
-async function createDockerComposeFile(installPath: string, config: ZeroEvalConfig): Promise<void> {
-  const composeContent = `version: '3.8'
+async function installDependencies(installPath: string, onProgress?: ProgressCallback): Promise<void> {
+  onProgress?.({
+    step: 'dependencies',
+    message: 'Installing backend dependencies...',
+    progress: 40,
+  });
 
-services:
-  database:
-    image: postgres:16-alpine
-    container_name: zeroeval-database
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: \${DB_USER}
-      POSTGRES_PASSWORD: \${DB_PASSWORD}
-      POSTGRES_DB: \${DB_NAME}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "\${DB_PORT:-5432}:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \${DB_USER} -d \${DB_NAME}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  // Install backend dependencies
+  await execa('npm', ['install'], {
+    cwd: path.join(installPath, 'backend'),
+    stdio: 'pipe',
+  });
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: zeroeval-backend
-    restart: unless-stopped
-    depends_on:
-      database:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://\${DB_USER}:\${DB_PASSWORD}@database:5432/\${DB_NAME}
-      JWT_SECRET: \${JWT_SECRET}
-      JWT_EXPIRES_IN: \${JWT_EXPIRES_IN:-7d}
-      NODE_ENV: \${NODE_ENV:-production}
-      PORT: 3001
-      FRONTEND_URL: \${FRONTEND_URL:-http://localhost:3000}
-    ports:
-      - "\${BACKEND_PORT:-3001}:3001"
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  onProgress?.({
+    step: 'dependencies',
+    message: 'Installing frontend dependencies...',
+    progress: 55,
+  });
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: \${NEXT_PUBLIC_API_URL:-http://localhost:3001/api}
-    container_name: zeroeval-frontend
-    restart: unless-stopped
-    depends_on:
-      - backend
-    ports:
-      - "\${FRONTEND_PORT:-3000}:3000"
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-volumes:
-  postgres_data:
-`;
-
-  await fs.writeFile(path.join(installPath, 'docker-compose.yml'), composeContent);
+  // Install frontend dependencies
+  await execa('npm', ['install'], {
+    cwd: path.join(installPath, 'frontend'),
+    stdio: 'pipe',
+  });
 }
 
 /**
- * Create Dockerfile for backend
+ * Run Prisma migrations
  */
-async function createBackendDockerfile(installPath: string): Promise<void> {
-  const dockerfile = `FROM node:20-alpine AS base
-WORKDIR /app
+async function runMigrations(installPath: string, databaseUrl: string, onProgress?: ProgressCallback): Promise<void> {
+  onProgress?.({
+    step: 'migrations',
+    message: 'Generating Prisma client...',
+    progress: 70,
+  });
 
-# Install dependencies
-COPY package*.json ./
-RUN npm ci --only=production
+  const backendPath = path.join(installPath, 'backend');
 
-# Copy source
-COPY . .
+  // Generate Prisma client
+  await execa('npx', ['prisma', 'generate'], {
+    cwd: backendPath,
+    stdio: 'pipe',
+    env: { ...process.env, DATABASE_URL: databaseUrl },
+  });
 
-# Generate Prisma client
-RUN npx prisma generate
+  onProgress?.({
+    step: 'migrations',
+    message: 'Running database migrations...',
+    progress: 80,
+  });
 
-# Build
-RUN npm run build || echo "No build step"
-
-# Production stage
-FROM node:20-alpine AS production
-WORKDIR /app
-
-# Copy from base
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/dist ./dist
-COPY --from=base /app/prisma ./prisma
-COPY --from=base /app/package*.json ./
-
-# Run migrations and start
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
-`;
-
-  await fs.writeFile(path.join(installPath, 'backend', 'Dockerfile'), dockerfile);
+  // Run migrations
+  await execa('npx', ['prisma', 'migrate', 'deploy'], {
+    cwd: backendPath,
+    stdio: 'pipe',
+    env: { ...process.env, DATABASE_URL: databaseUrl },
+  });
 }
 
 /**
- * Create Dockerfile for frontend
+ * Create root package.json with dev script
  */
-async function createFrontendDockerfile(installPath: string): Promise<void> {
-  const dockerfile = `FROM node:20-alpine AS base
-WORKDIR /app
+async function createRootPackageJson(installPath: string, config: ZeroEvalConfig): Promise<void> {
+  const packageJson = {
+    name: 'zero-evaluation',
+    version: '1.0.0',
+    private: true,
+    scripts: {
+      dev: 'concurrently "npm run dev:backend" "npm run dev:frontend"',
+      'dev:backend': `cd backend && PORT=${config.backendPort} npm run dev`,
+      'dev:frontend': `cd frontend && npm run dev -- -p ${config.frontendPort}`,
+      start: 'npm run dev',
+      'install:all': 'npm install --prefix backend && npm install --prefix frontend',
+    },
+    devDependencies: {
+      concurrently: '^8.2.0',
+    },
+  };
 
-# Install dependencies
-COPY package*.json ./
-RUN npm ci
+  await fs.writeJson(path.join(installPath, 'package.json'), packageJson, { spaces: 2 });
 
-# Copy source
-COPY . .
-
-# Build argument for API URL
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=\${NEXT_PUBLIC_API_URL}
-
-# Build
-RUN npm run build
-
-# Production stage
-FROM node:20-alpine AS production
-WORKDIR /app
-
-ENV NODE_ENV=production
-
-# Copy necessary files
-COPY --from=base /app/.next/standalone ./
-COPY --from=base /app/.next/static ./.next/static
-COPY --from=base /app/public ./public
-
-EXPOSE 3000
-
-CMD ["node", "server.js"]
-`;
-
-  await fs.writeFile(path.join(installPath, 'frontend', 'Dockerfile'), dockerfile);
+  // Install concurrently
+  await execa('npm', ['install'], {
+    cwd: installPath,
+    stdio: 'pipe',
+  });
 }
 
 /**
- * Install Zero Evaluation
+ * Install Zero Evaluation (Local PostgreSQL mode)
  */
 export async function install(
   options: InstallOptions = {},
@@ -299,19 +282,17 @@ export async function install(
 ): Promise<ZeroEvalConfig> {
   const installPath = options.installPath || getDefaultInstallPath();
 
-  // Check requirements
+  // Find available ports
   onProgress?.({
-    step: 'check',
-    message: 'Checking system requirements...',
+    step: 'ports',
+    message: 'Finding available ports...',
     progress: 5,
   });
 
-  if (!options.skipDocker) {
-    const requirements = await checkRequirements();
-    if (requirements.errors.length > 0) {
-      throw new Error(requirements.errors.join('\n'));
-    }
-  }
+  const ports = await findAvailablePorts(
+    options.frontendPort || 3000,
+    options.backendPort || 3001
+  );
 
   // Create configuration
   onProgress?.({
@@ -322,61 +303,74 @@ export async function install(
 
   const config = createConfig({
     installPath,
-    frontendPort: options.frontendPort,
-    backendPort: options.backendPort,
+    frontendPort: ports.frontend,
+    backendPort: ports.backend,
     dbPort: options.dbPort,
+    databaseUrl: options.databaseUrl,
   });
+
+  // Create database if it doesn't exist
+  onProgress?.({
+    step: 'database',
+    message: 'Setting up database...',
+    progress: 15,
+  });
+
+  const dbExists = await databaseExists(config.dbName);
+  if (!dbExists) {
+    const result = await createDatabase(config.dbName);
+    if (!result.success) {
+      throw new Error(`Failed to create database: ${result.error}`);
+    }
+  }
+
+  // Test database connection
+  const connectionTest = await testDatabaseConnection(config.databaseUrl);
+  if (!connectionTest.success) {
+    throw new Error(`Cannot connect to database: ${connectionTest.error}`);
+  }
 
   // Copy project files
   await copyProjectFiles(installPath, onProgress);
 
-  // Update docker-compose and Dockerfiles if they don't exist
-  onProgress?.({
-    step: 'docker',
-    message: 'Configuring Docker...',
-    progress: 40,
-  });
-
-  // Only create these files if they don't already exist from the copy
-  if (!(await fs.pathExists(path.join(installPath, 'docker-compose.yml')))) {
-    await createDockerComposeFile(installPath, config);
-  }
-  if (!(await fs.pathExists(path.join(installPath, 'backend', 'Dockerfile')))) {
-    await createBackendDockerfile(installPath);
-  }
-  if (!(await fs.pathExists(path.join(installPath, 'frontend', 'Dockerfile')))) {
-    await createFrontendDockerfile(installPath);
-  }
-
-  // Create .env file
+  // Create .env files
   onProgress?.({
     step: 'env',
-    message: 'Creating environment file...',
-    progress: 50,
+    message: 'Creating environment files...',
+    progress: 35,
   });
 
-  const envContent = generateEnvContent(config);
-  await fs.writeFile(path.join(installPath, '.env'), envContent);
+  // Backend .env
+  const backendEnv = generateBackendEnvContent(config);
+  await fs.writeFile(path.join(installPath, 'backend', '.env'), backendEnv);
+
+  // Frontend .env.local
+  const frontendEnv = generateFrontendEnvContent(config);
+  await fs.writeFile(path.join(installPath, 'frontend', '.env.local'), frontendEnv);
+
+  // Install dependencies
+  await installDependencies(installPath, onProgress);
+
+  // Run migrations
+  await runMigrations(installPath, config.databaseUrl, onProgress);
+
+  // Create root package.json with dev script
+  onProgress?.({
+    step: 'setup',
+    message: 'Setting up project...',
+    progress: 90,
+  });
+
+  await createRootPackageJson(installPath, config);
 
   // Save configuration
   onProgress?.({
     step: 'save',
     message: 'Saving configuration...',
-    progress: 60,
+    progress: 95,
   });
 
   await saveConfig(config);
-
-  // Start services if docker is available
-  if (!options.skipDocker) {
-    onProgress?.({
-      step: 'start',
-      message: 'Building and starting services (this may take a few minutes)...',
-      progress: 70,
-    });
-
-    await startServices(installPath);
-  }
 
   onProgress?.({
     step: 'complete',
@@ -392,26 +386,21 @@ export async function install(
  */
 export async function uninstall(removeData: boolean = false): Promise<void> {
   const { loadConfig } = await import('./config.js');
-  const { stopServices, resetData } = await import('./docker.js');
 
   const config = await loadConfig();
   if (!config) {
     throw new Error('Zero Evaluation is not installed.');
   }
 
-  // Stop and optionally remove data
-  if (removeData) {
-    await resetData(config.installPath);
-  } else {
-    await stopServices(config.installPath);
-  }
-
   // Remove config file
-  const configDir = path.join(require('os').homedir(), '.zero-eval');
-  await fs.remove(configDir);
+  await deleteConfig();
 
   // Optionally remove installation directory
   if (removeData) {
     await fs.remove(config.installPath);
   }
 }
+
+// Re-export for convenience
+export { checkPostgresInstalled, checkPostgresRunning, getPostgresInstallInstructions } from './postgres.js';
+export { findAvailablePorts, isPortAvailable } from './ports.js';

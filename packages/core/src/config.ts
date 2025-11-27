@@ -3,6 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { ZeroEvalConfig, DEFAULT_CONFIG } from './types.js';
+import { getDefaultDatabaseUrl } from './postgres.js';
 
 const CONFIG_DIR = path.join(os.homedir(), '.zero-eval');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
@@ -32,14 +33,19 @@ export function getDefaultInstallPath(): string {
  * Create a full configuration with defaults
  */
 export function createConfig(options: Partial<ZeroEvalConfig> = {}): ZeroEvalConfig {
+  const dbName = options.dbName || DEFAULT_CONFIG.dbName!;
+  const dbPort = options.dbPort || DEFAULT_CONFIG.dbPort!;
+  const dbUser = options.dbUser || os.userInfo().username;
+
   return {
     installPath: options.installPath || getDefaultInstallPath(),
     frontendPort: options.frontendPort || DEFAULT_CONFIG.frontendPort!,
     backendPort: options.backendPort || DEFAULT_CONFIG.backendPort!,
-    dbPort: options.dbPort || DEFAULT_CONFIG.dbPort!,
-    dbUser: options.dbUser || DEFAULT_CONFIG.dbUser!,
-    dbPassword: options.dbPassword || generatePassword(),
-    dbName: options.dbName || DEFAULT_CONFIG.dbName!,
+    dbPort,
+    dbUser,
+    dbPassword: options.dbPassword || '', // Empty for local PostgreSQL (peer auth)
+    dbName,
+    databaseUrl: options.databaseUrl || getDefaultDatabaseUrl(dbName, dbPort),
     jwtSecret: options.jwtSecret || generateJwtSecret(),
     nodeEnv: options.nodeEnv || DEFAULT_CONFIG.nodeEnv!,
   };
@@ -51,6 +57,12 @@ export function createConfig(options: Partial<ZeroEvalConfig> = {}): ZeroEvalCon
 export async function saveConfig(config: ZeroEvalConfig): Promise<void> {
   await fs.ensureDir(CONFIG_DIR);
   await fs.writeJson(CONFIG_FILE, config, { spaces: 2 });
+  // Set restrictive permissions on config file
+  try {
+    await fs.chmod(CONFIG_FILE, 0o600);
+  } catch {
+    // Ignore permission errors on Windows
+  }
 }
 
 /**
@@ -73,7 +85,8 @@ export async function loadConfig(): Promise<ZeroEvalConfig | null> {
 export async function isInstalled(): Promise<boolean> {
   const config = await loadConfig();
   if (!config) return false;
-  return await fs.pathExists(path.join(config.installPath, 'docker-compose.yml'));
+  // Check for package.json in install path (works for both local and docker setups)
+  return await fs.pathExists(path.join(config.installPath, 'backend', 'package.json'));
 }
 
 /**
@@ -92,30 +105,48 @@ export async function getInstallPath(): Promise<string | null> {
 }
 
 /**
- * Generate .env file content
+ * Generate backend .env file content
  */
-export function generateEnvContent(config: ZeroEvalConfig): string {
-  return `# Zero Evaluation Configuration
+export function generateBackendEnvContent(config: ZeroEvalConfig): string {
+  return `# Zero Evaluation Backend Configuration
 # Generated on ${new Date().toISOString()}
 
-# Database Configuration
-DB_USER=${config.dbUser}
-DB_PASSWORD=${config.dbPassword}
-DB_NAME=${config.dbName}
-DB_PORT=${config.dbPort}
-DATABASE_URL=postgresql://${config.dbUser}:${config.dbPassword}@database:5432/${config.dbName}
+# Database
+DATABASE_URL=${config.databaseUrl}
 
 # Authentication
 JWT_SECRET=${config.jwtSecret}
 JWT_EXPIRES_IN=7d
 
-# Server Configuration
+# Server
+PORT=${config.backendPort}
 NODE_ENV=${config.nodeEnv}
-BACKEND_PORT=${config.backendPort}
-FRONTEND_PORT=${config.frontendPort}
 FRONTEND_URL=http://localhost:${config.frontendPort}
-
-# API URL for frontend (used at build time)
-NEXT_PUBLIC_API_URL=http://localhost:${config.backendPort}/api
 `;
+}
+
+/**
+ * Generate frontend .env.local file content
+ */
+export function generateFrontendEnvContent(config: ZeroEvalConfig): string {
+  return `# Zero Evaluation Frontend Configuration
+# Generated on ${new Date().toISOString()}
+
+# Backend API URL (used in development, production uses proxy)
+NEXT_PUBLIC_API_URL=http://localhost:${config.backendPort}/api
+
+# Backend port for proxy configuration
+BACKEND_PORT=${config.backendPort}
+`;
+}
+
+/**
+ * Delete the configuration
+ */
+export async function deleteConfig(): Promise<void> {
+  try {
+    await fs.remove(CONFIG_FILE);
+  } catch {
+    // Ignore errors
+  }
 }

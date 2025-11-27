@@ -12,24 +12,33 @@ export {
   isInstalled,
   getConfigDir,
   getInstallPath,
-  generateEnvContent,
+  generateBackendEnvContent,
+  generateFrontendEnvContent,
+  deleteConfig,
 } from './config.js';
 
-// Docker operations
+// PostgreSQL utilities
 export {
-  isDockerAvailable,
-  isDockerComposeAvailable,
-  getServiceHealth,
-  startServices,
-  stopServices,
-  restartServices,
-  getLogs,
-  pullImages,
-  runMigrations,
-  resetData,
-  createBackup,
-  restoreBackup,
-} from './docker.js';
+  getPlatform,
+  getPostgresInstallInstructions,
+  checkPostgresInstalled,
+  checkPostgresRunning,
+  databaseExists,
+  createDatabase,
+  dropDatabase,
+  getDefaultDatabaseUrl,
+  getDatabaseUrl,
+  testDatabaseConnection,
+  type PostgresInfo,
+} from './postgres.js';
+
+// Port utilities
+export {
+  isPortAvailable,
+  findAvailablePort,
+  findAvailablePorts,
+  checkPortsAvailable,
+} from './ports.js';
 
 // Installation
 export {
@@ -38,4 +47,5 @@ export {
   uninstall,
   type InstallProgress,
   type ProgressCallback,
+  type RequirementsCheck,
 } from './installer.js';

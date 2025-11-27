@@ -1,6 +1,8 @@
 import type { ApiResponse, ApiError, PaginatedResponse } from '@/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+// Use relative path - Next.js rewrites will proxy to the backend
+// This works at runtime regardless of build-time environment variables
+const API_BASE_URL = '/api';
 
 // Token management
 let authToken: string | null = null;
@@ -341,8 +343,8 @@ export const api = {
   export: {
     summary: () => api.get<{ counts: Record<string, number>; totalRecords: number }>('/export/summary'),
     getExportUrl: (format: 'csv' | 'sql' | 'json', table?: string) => {
-      const baseUrl = API_BASE_URL;
-      let url = `${baseUrl}/export/${format}`;
+      // Use relative URL so Next.js proxy can handle it
+      let url = `/api/export/${format}`;
       if (table) {
         url += `?table=${table}`;
       }
@@ -367,8 +369,5 @@ export const api = {
       }>('/import/json', { data, mode }),
   },
 };
-
-// Export API base URL for direct downloads
-export const getApiBaseUrl = () => API_BASE_URL;
 
 export default api;
