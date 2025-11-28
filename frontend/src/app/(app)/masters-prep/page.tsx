@@ -141,6 +141,46 @@ interface University {
   updatedAt: string;
 }
 
+interface Scholarship {
+  id: string;
+  universityId?: string;
+  name: string;
+  provider?: string;
+  type: string;
+  amount?: string;
+  currency?: string;
+  coverage?: string;
+  eligibility?: string;
+  applicationLink?: string;
+  deadline?: string;
+  status: string;
+  priority?: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  university?: { id: string; universityName: string; country?: string };
+}
+
+const SCHOLARSHIP_TYPES = [
+  { value: 'full', label: 'Full Scholarship' },
+  { value: 'partial', label: 'Partial Scholarship' },
+  { value: 'tuition', label: 'Tuition Only' },
+  { value: 'living', label: 'Living Expenses' },
+  { value: 'travel', label: 'Travel Grant' },
+  { value: 'research', label: 'Research Grant' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+const SCHOLARSHIP_STATUSES = [
+  { value: 'researching', label: 'Researching' },
+  { value: 'eligible', label: 'Eligible' },
+  { value: 'applying', label: 'Applying' },
+  { value: 'applied', label: 'Applied' },
+  { value: 'awarded', label: 'Awarded' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'expired', label: 'Expired' },
+] as const;
+
 const UNIVERSITY_STATUSES = [
   { value: 'researching', label: 'Researching' },
   { value: 'shortlisted', label: 'Shortlisted' },
@@ -182,6 +222,7 @@ export default function MastersPrepPage() {
   const [readinessBreakdown, setReadinessBreakdown] = React.useState<ReadinessBreakdown | null>(null);
   const [notes, setNotes] = React.useState<QuickNote[]>([]);
   const [universities, setUniversities] = React.useState<University[]>([]);
+  const [scholarships, setScholarships] = React.useState<Scholarship[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   // Modal states
@@ -189,19 +230,22 @@ export default function MastersPrepPage() {
   const [showSessionModal, setShowSessionModal] = React.useState(false);
   const [showNoteModal, setShowNoteModal] = React.useState(false);
   const [showUniversityModal, setShowUniversityModal] = React.useState(false);
+  const [showScholarshipModal, setShowScholarshipModal] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<PrepItem | null>(null);
   const [editingNote, setEditingNote] = React.useState<QuickNote | null>(null);
   const [editingUniversity, setEditingUniversity] = React.useState<University | null>(null);
+  const [editingScholarship, setEditingScholarship] = React.useState<Scholarship | null>(null);
   const [sessionItemId, setSessionItemId] = React.useState<string | null>(null);
 
   // Filters & View
-  const [activeTab, setActiveTab] = React.useState<'items' | 'readiness' | 'notes' | 'universities'>('items');
+  const [activeTab, setActiveTab] = React.useState<'items' | 'readiness' | 'notes' | 'universities' | 'scholarships'>('items');
   const [filterCategory, setFilterCategory] = React.useState<string>('all');
   const [filterStatus, setFilterStatus] = React.useState<string>('all');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [expandedItem, setExpandedItem] = React.useState<string | null>(null);
   const [noteSearchQuery, setNoteSearchQuery] = React.useState('');
   const [universitySearchQuery, setUniversitySearchQuery] = React.useState('');
+  const [scholarshipSearchQuery, setScholarshipSearchQuery] = React.useState('');
 
   // Fetch data
   React.useEffect(() => {
@@ -210,18 +254,20 @@ export default function MastersPrepPage() {
     async function fetchData() {
       try {
         setLoading(true);
-        const [itemsRes, statsRes, readinessRes, notesRes, universitiesRes] = await Promise.all([
+        const [itemsRes, statsRes, readinessRes, notesRes, universitiesRes, scholarshipsRes] = await Promise.all([
           api.mastersPrep.list({ limit: 100 }),
           api.mastersPrep.stats(),
           api.mastersPrep.readiness(),
           api.mastersPrep.notes.list({ limit: 100 }),
           api.mastersPrep.universities.list({ limit: 100 }),
+          api.mastersPrep.scholarships.list({ limit: 100 }),
         ]);
         setItems((itemsRes as any).data || []);
         setStats((statsRes as any).data || null);
         setReadinessBreakdown((readinessRes as any).data || null);
         setNotes((notesRes as any).data || []);
         setUniversities((universitiesRes as any).data || []);
+        setScholarships((scholarshipsRes as any).data || []);
       } catch (err) {
         console.error('Failed to fetch masters prep data:', err);
       } finally {
@@ -235,18 +281,20 @@ export default function MastersPrepPage() {
   // Refresh stats
   const refreshData = async () => {
     try {
-      const [itemsRes, statsRes, readinessRes, notesRes, universitiesRes] = await Promise.all([
+      const [itemsRes, statsRes, readinessRes, notesRes, universitiesRes, scholarshipsRes] = await Promise.all([
         api.mastersPrep.list({ limit: 100 }),
         api.mastersPrep.stats(),
         api.mastersPrep.readiness(),
         api.mastersPrep.notes.list({ limit: 100 }),
         api.mastersPrep.universities.list({ limit: 100 }),
+        api.mastersPrep.scholarships.list({ limit: 100 }),
       ]);
       setItems((itemsRes as any).data || []);
       setStats((statsRes as any).data || null);
       setReadinessBreakdown((readinessRes as any).data || null);
       setNotes((notesRes as any).data || []);
       setUniversities((universitiesRes as any).data || []);
+      setScholarships((scholarshipsRes as any).data || []);
     } catch (err) {
       console.error('Failed to refresh data:', err);
     }
@@ -362,6 +410,38 @@ export default function MastersPrepPage() {
     }
   };
 
+  // Scholarship CRUD handlers
+  const handleCreateScholarship = async (data: Partial<Scholarship>) => {
+    try {
+      const res = await api.mastersPrep.scholarships.create(data);
+      setScholarships((prev) => [(res as any).data, ...prev]);
+      setShowScholarshipModal(false);
+    } catch (err) {
+      console.error('Failed to create scholarship:', err);
+    }
+  };
+
+  const handleUpdateScholarship = async (id: string, data: Partial<Scholarship>) => {
+    try {
+      const res = await api.mastersPrep.scholarships.update(id, data);
+      setScholarships((prev) => prev.map((s) => (s.id === id ? (res as any).data : s)));
+      setEditingScholarship(null);
+      setShowScholarshipModal(false);
+    } catch (err) {
+      console.error('Failed to update scholarship:', err);
+    }
+  };
+
+  const handleDeleteScholarship = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this scholarship?')) return;
+    try {
+      await api.mastersPrep.scholarships.delete(id);
+      setScholarships((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) {
+      console.error('Failed to delete scholarship:', err);
+    }
+  };
+
   // Filter items
   const filteredItems = items.filter((item) => {
     const matchesCategory = filterCategory === 'all' || item.category === filterCategory;
@@ -392,6 +472,18 @@ export default function MastersPrepPage() {
       uni.country?.toLowerCase().includes(query) ||
       uni.programName?.toLowerCase().includes(query) ||
       uni.specialization?.toLowerCase().includes(query)
+    );
+  });
+
+  // Filter scholarships
+  const filteredScholarships = scholarships.filter((sch) => {
+    if (!scholarshipSearchQuery) return true;
+    const query = scholarshipSearchQuery.toLowerCase();
+    return (
+      sch.name.toLowerCase().includes(query) ||
+      sch.provider?.toLowerCase().includes(query) ||
+      sch.university?.universityName?.toLowerCase().includes(query) ||
+      sch.coverage?.toLowerCase().includes(query)
     );
   });
 
@@ -536,6 +628,16 @@ export default function MastersPrepPage() {
           onClick={() => setActiveTab('universities')}
         >
           Universities ({universities.length})
+        </button>
+        <button
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'scholarships'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+          onClick={() => setActiveTab('scholarships')}
+        >
+          Scholarships ({scholarships.length})
         </button>
       </div>
 
@@ -922,6 +1024,130 @@ export default function MastersPrepPage() {
         </>
       )}
 
+      {/* Scholarships Tab */}
+      {activeTab === 'scholarships' && (
+        <>
+          {/* Search and Add */}
+          <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search scholarships..."
+                value={scholarshipSearchQuery}
+                onChange={(e) => setScholarshipSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button
+              onClick={() => {
+                setEditingScholarship(null);
+                setShowScholarshipModal(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Scholarship
+            </Button>
+          </div>
+
+          {/* Scholarships Table */}
+          {filteredScholarships.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <DollarSign className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  {scholarships.length === 0 ? 'No scholarships added yet.' : 'No scholarships match your search.'}
+                </p>
+                {scholarships.length === 0 && (
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => {
+                      setEditingScholarship(null);
+                      setShowScholarshipModal(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Your First Scholarship
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 text-sm font-medium">Scholarship</th>
+                    <th className="text-left p-3 text-sm font-medium">University</th>
+                    <th className="text-left p-3 text-sm font-medium">Type</th>
+                    <th className="text-left p-3 text-sm font-medium">Amount</th>
+                    <th className="text-left p-3 text-sm font-medium">Deadline</th>
+                    <th className="text-left p-3 text-sm font-medium">Status</th>
+                    <th className="text-center p-3 text-sm font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredScholarships.map((sch) => (
+                    <tr key={sch.id} className="border-b hover:bg-muted/30">
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          {sch.priority && (
+                            <Badge
+                              variant={sch.priority === 1 ? 'error' : sch.priority === 2 ? 'warning' : 'success'}
+                              className="text-xs"
+                            >
+                              P{sch.priority}
+                            </Badge>
+                          )}
+                          <span className="font-medium">{sch.name}</span>
+                        </div>
+                        {sch.provider && (
+                          <p className="text-xs text-muted-foreground mt-1">{sch.provider}</p>
+                        )}
+                      </td>
+                      <td className="p-3 text-sm">
+                        {sch.university ? (
+                          <span>{sch.university.universityName}</span>
+                        ) : (
+                          <span className="text-muted-foreground">Any/General</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-sm">
+                        {SCHOLARSHIP_TYPES.find(t => t.value === sch.type)?.label || sch.type}
+                      </td>
+                      <td className="p-3 text-sm">{sch.amount || '-'}</td>
+                      <td className="p-3 text-sm">{sch.deadline || '-'}</td>
+                      <td className="p-3">
+                        <Badge variant={getScholarshipStatusVariant(sch.status)}>
+                          {SCHOLARSHIP_STATUSES.find(s => s.value === sch.status)?.label || sch.status}
+                        </Badge>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingScholarship(sch);
+                              setShowScholarshipModal(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteScholarship(sch.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
       {/* Item Modal */}
       {showItemModal && (
         <PrepItemModal
@@ -982,6 +1208,25 @@ export default function MastersPrepPage() {
               handleUpdateUniversity(editingUniversity.id, data);
             } else {
               handleCreateUniversity(data);
+            }
+          }}
+        />
+      )}
+
+      {/* Scholarship Modal */}
+      {showScholarshipModal && (
+        <ScholarshipModal
+          scholarship={editingScholarship}
+          universities={universities}
+          onClose={() => {
+            setShowScholarshipModal(false);
+            setEditingScholarship(null);
+          }}
+          onSave={(data) => {
+            if (editingScholarship) {
+              handleUpdateScholarship(editingScholarship.id, data);
+            } else {
+              handleCreateScholarship(data);
             }
           }}
         />
@@ -1873,6 +2118,268 @@ function UniversityModal({
   );
 }
 
+function ScholarshipModal({
+  scholarship,
+  universities,
+  onClose,
+  onSave,
+}: {
+  scholarship: Scholarship | null;
+  universities: University[];
+  onClose: () => void;
+  onSave: (data: Partial<Scholarship>) => void;
+}) {
+  const [formData, setFormData] = React.useState({
+    name: scholarship?.name || '',
+    universityId: scholarship?.universityId || '',
+    provider: scholarship?.provider || '',
+    type: scholarship?.type || 'partial',
+    amount: scholarship?.amount || '',
+    currency: scholarship?.currency || '',
+    coverage: scholarship?.coverage || '',
+    eligibility: scholarship?.eligibility || '',
+    applicationLink: scholarship?.applicationLink || '',
+    deadline: scholarship?.deadline || '',
+    status: scholarship?.status || 'researching',
+    priority: scholarship?.priority?.toString() || '',
+    notes: scholarship?.notes || '',
+  });
+  const [saving, setSaving] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState(0);
+
+  const tabs = ['Basic', 'Details', 'Requirements', 'Notes'];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    await onSave({
+      name: formData.name,
+      universityId: formData.universityId || null,
+      provider: formData.provider || undefined,
+      type: formData.type,
+      amount: formData.amount || undefined,
+      currency: formData.currency || undefined,
+      coverage: formData.coverage || undefined,
+      eligibility: formData.eligibility || undefined,
+      applicationLink: formData.applicationLink || undefined,
+      deadline: formData.deadline || undefined,
+      status: formData.status,
+      priority: formData.priority ? Number(formData.priority) : undefined,
+      notes: formData.notes || undefined,
+    });
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+      <div className="bg-background rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto m-4">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">{scholarship ? 'Edit Scholarship' : 'Add Scholarship'}</h2>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b">
+          {tabs.map((tab, index) => (
+            <button
+              key={tab}
+              type="button"
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === index
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setActiveTab(index)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {/* Basic Tab */}
+          {activeTab === 0 && (
+            <>
+              <div>
+                <label className="text-sm font-medium">Scholarship Name *</label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., Erasmus Mundus, DAAD"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Link to University</label>
+                <select
+                  value={formData.universityId}
+                  onChange={(e) => setFormData({ ...formData, universityId: e.target.value })}
+                  className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+                >
+                  <option value="">General / Any University</option>
+                  {universities.map((uni) => (
+                    <option key={uni.id} value={uni.id}>
+                      {uni.universityName} {uni.country ? `(${uni.country})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Link this scholarship to a specific university or leave empty for general scholarships
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Provider</label>
+                <Input
+                  value={formData.provider}
+                  onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+                  placeholder="e.g., EU, DAAD, Gates Foundation"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Type</label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    {SCHOLARSHIP_TYPES.map(({ value, label }) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    {SCHOLARSHIP_STATUSES.map(({ value, label }) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Priority</label>
+                <select
+                  value={formData.priority}
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                  className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+                >
+                  <option value="">Select priority...</option>
+                  <option value="1">1 - High Priority</option>
+                  <option value="2">2 - Medium Priority</option>
+                  <option value="3">3 - Low Priority</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* Details Tab */}
+          {activeTab === 1 && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Amount</label>
+                  <Input
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    placeholder="e.g., 15,000, Full tuition"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Currency</label>
+                  <Input
+                    value={formData.currency}
+                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                    placeholder="e.g., EUR, USD"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Deadline</label>
+                <Input
+                  value={formData.deadline}
+                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                  placeholder="e.g., January 15, 2025"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Application Link</label>
+                <Input
+                  value={formData.applicationLink}
+                  onChange={(e) => setFormData({ ...formData, applicationLink: e.target.value })}
+                  placeholder="https://..."
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Coverage</label>
+                <textarea
+                  value={formData.coverage}
+                  onChange={(e) => setFormData({ ...formData, coverage: e.target.value })}
+                  className="w-full min-h-[100px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+                  placeholder="What does the scholarship cover? (tuition, living, travel, etc.)"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Requirements Tab */}
+          {activeTab === 2 && (
+            <div>
+              <label className="text-sm font-medium">Eligibility Requirements</label>
+              <textarea
+                value={formData.eligibility}
+                onChange={(e) => setFormData({ ...formData, eligibility: e.target.value })}
+                className="w-full min-h-[200px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+                placeholder="Requirements, qualifications, documents needed..."
+              />
+            </div>
+          )}
+
+          {/* Notes Tab */}
+          {activeTab === 3 && (
+            <div>
+              <label className="text-sm font-medium">Notes</label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                className="w-full min-h-[200px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+                placeholder="Additional notes, tips, research findings..."
+              />
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {scholarship ? 'Update' : 'Add'} Scholarship
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // Helper functions
 function getStatusBadgeVariant(status: string): 'success' | 'warning' | 'error' | 'info' | 'neutral' {
   switch (status) {
@@ -1900,6 +2407,23 @@ function getUniversityStatusVariant(status: string): 'success' | 'warning' | 'er
     case 'shortlisted':
       return 'warning';
     case 'rejected':
+      return 'error';
+    default:
+      return 'neutral';
+  }
+}
+
+function getScholarshipStatusVariant(status: string): 'success' | 'warning' | 'error' | 'info' | 'neutral' {
+  switch (status) {
+    case 'awarded':
+      return 'success';
+    case 'applied':
+    case 'applying':
+      return 'info';
+    case 'eligible':
+      return 'warning';
+    case 'rejected':
+    case 'expired':
       return 'error';
     default:
       return 'neutral';

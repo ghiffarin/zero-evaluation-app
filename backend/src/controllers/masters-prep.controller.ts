@@ -233,3 +233,21 @@ export const getAllUniversities = universityCrud.getAll;
 export const getUniversityById = universityCrud.getOne;
 export const updateUniversity = universityCrud.update;
 export const deleteUniversity = universityCrud.delete;
+
+// Scholarship CRUD
+const scholarshipCrud = createCrudController({
+  model: 'scholarship',
+  include: {
+    university: {
+      select: { id: true, universityName: true, country: true },
+    },
+  },
+  orderBy: [{ priority: 'asc' }, { deadline: 'asc' }, { name: 'asc' }],
+  searchFields: ['name', 'provider', 'coverage', 'eligibility', 'notes'],
+});
+
+export const createScholarship = scholarshipCrud.create;
+export const getAllScholarships = scholarshipCrud.getAll;
+export const getScholarshipById = scholarshipCrud.getOne;
+export const updateScholarship = scholarshipCrud.update;
+export const deleteScholarship = scholarshipCrud.delete;
