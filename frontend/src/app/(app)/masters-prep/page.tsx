@@ -46,6 +46,11 @@ import {
   BarChart3,
   StickyNote,
   Link,
+  Eye,
+  MapPin,
+  Calendar,
+  Award,
+  Globe,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
@@ -236,6 +241,8 @@ export default function MastersPrepPage() {
   const [editingUniversity, setEditingUniversity] = React.useState<University | null>(null);
   const [editingScholarship, setEditingScholarship] = React.useState<Scholarship | null>(null);
   const [sessionItemId, setSessionItemId] = React.useState<string | null>(null);
+  const [previewUniversity, setPreviewUniversity] = React.useState<University | null>(null);
+  const [previewScholarship, setPreviewScholarship] = React.useState<Scholarship | null>(null);
 
   // Filters & View
   const [activeTab, setActiveTab] = React.useState<'items' | 'readiness' | 'notes' | 'universities' | 'scholarships'>('items');
@@ -970,7 +977,11 @@ export default function MastersPrepPage() {
                 </thead>
                 <tbody>
                   {filteredUniversities.map((uni) => (
-                    <tr key={uni.id} className="border-b hover:bg-muted/30">
+                    <tr
+                      key={uni.id}
+                      className="border-b hover:bg-muted/30 cursor-pointer"
+                      onClick={() => setPreviewUniversity(uni)}
+                    >
                       <td className="p-3">
                         <div className="flex items-center gap-2">
                           {uni.priority && (
@@ -1003,14 +1014,22 @@ export default function MastersPrepPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setEditingUniversity(uni);
                               setShowUniversityModal(true);
                             }}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDeleteUniversity(uni.id)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteUniversity(uni.id);
+                            }}
+                          >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -1088,7 +1107,11 @@ export default function MastersPrepPage() {
                 </thead>
                 <tbody>
                   {filteredScholarships.map((sch) => (
-                    <tr key={sch.id} className="border-b hover:bg-muted/30">
+                    <tr
+                      key={sch.id}
+                      className="border-b hover:bg-muted/30 cursor-pointer"
+                      onClick={() => setPreviewScholarship(sch)}
+                    >
                       <td className="p-3">
                         <div className="flex items-center gap-2">
                           {sch.priority && (
@@ -1127,14 +1150,22 @@ export default function MastersPrepPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setEditingScholarship(sch);
                               setShowScholarshipModal(true);
                             }}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDeleteScholarship(sch.id)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteScholarship(sch.id);
+                            }}
+                          >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -1228,6 +1259,32 @@ export default function MastersPrepPage() {
             } else {
               handleCreateScholarship(data);
             }
+          }}
+        />
+      )}
+
+      {/* University Preview Modal */}
+      {previewUniversity && (
+        <UniversityPreviewModal
+          university={previewUniversity}
+          onClose={() => setPreviewUniversity(null)}
+          onEdit={() => {
+            setEditingUniversity(previewUniversity);
+            setPreviewUniversity(null);
+            setShowUniversityModal(true);
+          }}
+        />
+      )}
+
+      {/* Scholarship Preview Modal */}
+      {previewScholarship && (
+        <ScholarshipPreviewModal
+          scholarship={previewScholarship}
+          onClose={() => setPreviewScholarship(null)}
+          onEdit={() => {
+            setEditingScholarship(previewScholarship);
+            setPreviewScholarship(null);
+            setShowScholarshipModal(true);
           }}
         />
       )}
@@ -2428,4 +2485,316 @@ function getScholarshipStatusVariant(status: string): 'success' | 'warning' | 'e
     default:
       return 'neutral';
   }
+}
+
+// University Preview Modal
+function UniversityPreviewModal({
+  university,
+  onClose,
+  onEdit,
+}: {
+  university: University;
+  onClose: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-background rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-background border-b p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Building className="h-6 w-6 text-primary" />
+            <div>
+              <h2 className="text-xl font-semibold">{university.universityName}</h2>
+              {university.country && (
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {university.country}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onEdit}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="p-4 space-y-6">
+          {/* Status and Priority */}
+          <div className="flex flex-wrap gap-2">
+            <Badge variant={getUniversityStatusVariant(university.status)}>
+              {UNIVERSITY_STATUSES.find(s => s.value === university.status)?.label || university.status}
+            </Badge>
+            {university.priority && (
+              <Badge variant={university.priority === 1 ? 'error' : university.priority === 2 ? 'warning' : 'success'}>
+                Priority {university.priority}
+              </Badge>
+            )}
+          </div>
+
+          {/* Program Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {university.programName && (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">Program</h4>
+                <p className="text-sm">{university.programName}</p>
+              </div>
+            )}
+            {university.specialization && (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">Specialization</h4>
+                <p className="text-sm">{university.specialization}</p>
+              </div>
+            )}
+            {university.programLength && (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">Program Length</h4>
+                <p className="text-sm flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {university.programLength}
+                </p>
+              </div>
+            )}
+            {university.applicationDeadline && (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">Application Deadline</h4>
+                <p className="text-sm flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {university.applicationDeadline}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Costs */}
+          {(university.tuitionPerYear || university.livingCostPerYear) && (
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                <DollarSign className="h-4 w-4" />
+                Estimated Costs
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {university.tuitionPerYear && (
+                  <div className="p-3 bg-muted/50 rounded-md">
+                    <p className="text-xs text-muted-foreground">Tuition per Year</p>
+                    <p className="text-lg font-semibold">{university.tuitionPerYear}</p>
+                  </div>
+                )}
+                {university.livingCostPerYear && (
+                  <div className="p-3 bg-muted/50 rounded-md">
+                    <p className="text-xs text-muted-foreground">Living Cost per Year</p>
+                    <p className="text-lg font-semibold">{university.livingCostPerYear}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Admission Requirements */}
+          {university.admissionRequirements && (
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                Admission Requirements
+              </h4>
+              <div className="p-3 bg-muted/50 rounded-md text-sm whitespace-pre-wrap">
+                {university.admissionRequirements}
+              </div>
+            </div>
+          )}
+
+          {/* English Test */}
+          {university.englishTest && (
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-1">English Test Requirement</h4>
+              <p className="text-sm">{university.englishTest}</p>
+            </div>
+          )}
+
+          {/* Funding Options */}
+          {university.fundingOptions && (
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                <Award className="h-4 w-4" />
+                Funding Options
+              </h4>
+              <div className="p-3 bg-muted/50 rounded-md text-sm whitespace-pre-wrap">
+                {university.fundingOptions}
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {university.notes && (
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                <StickyNote className="h-4 w-4" />
+                Notes
+              </h4>
+              <div className="p-3 bg-muted/50 rounded-md text-sm whitespace-pre-wrap">
+                {university.notes}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Scholarship Preview Modal
+function ScholarshipPreviewModal({
+  scholarship,
+  onClose,
+  onEdit,
+}: {
+  scholarship: Scholarship;
+  onClose: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-background rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-background border-b p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Award className="h-6 w-6 text-primary" />
+            <div>
+              <h2 className="text-xl font-semibold">{scholarship.name}</h2>
+              {scholarship.provider && (
+                <p className="text-sm text-muted-foreground">{scholarship.provider}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onEdit}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="p-4 space-y-6">
+          {/* Status, Type and Priority */}
+          <div className="flex flex-wrap gap-2">
+            <Badge variant={getScholarshipStatusVariant(scholarship.status)}>
+              {SCHOLARSHIP_STATUSES.find(s => s.value === scholarship.status)?.label || scholarship.status}
+            </Badge>
+            <Badge variant="info">
+              {SCHOLARSHIP_TYPES.find(t => t.value === scholarship.type)?.label || scholarship.type}
+            </Badge>
+            {scholarship.priority && (
+              <Badge variant={scholarship.priority === 1 ? 'error' : scholarship.priority === 2 ? 'warning' : 'success'}>
+                Priority {scholarship.priority}
+              </Badge>
+            )}
+          </div>
+
+          {/* Linked University */}
+          {scholarship.university && (
+            <div className="p-3 bg-muted/50 rounded-md flex items-center gap-2">
+              <Building className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-xs text-muted-foreground">Linked University</p>
+                <p className="text-sm font-medium">
+                  {scholarship.university.universityName}
+                  {scholarship.university.country && ` (${scholarship.university.country})`}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Amount and Deadline */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {scholarship.amount && (
+              <div className="p-3 bg-muted/50 rounded-md">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <DollarSign className="h-3 w-3" />
+                  Amount
+                </p>
+                <p className="text-lg font-semibold">
+                  {scholarship.amount}
+                  {scholarship.currency && ` ${scholarship.currency}`}
+                </p>
+              </div>
+            )}
+            {scholarship.deadline && (
+              <div className="p-3 bg-muted/50 rounded-md">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Deadline
+                </p>
+                <p className="text-lg font-semibold">{scholarship.deadline}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Application Link */}
+          {scholarship.applicationLink && (
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                <Globe className="h-4 w-4" />
+                Application Link
+              </h4>
+              <a
+                href={scholarship.applicationLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline flex items-center gap-1"
+              >
+                {scholarship.applicationLink}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          )}
+
+          {/* Coverage */}
+          {scholarship.coverage && (
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                What It Covers
+              </h4>
+              <div className="p-3 bg-muted/50 rounded-md text-sm whitespace-pre-wrap">
+                {scholarship.coverage}
+              </div>
+            </div>
+          )}
+
+          {/* Eligibility */}
+          {scholarship.eligibility && (
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                <Target className="h-4 w-4" />
+                Eligibility Requirements
+              </h4>
+              <div className="p-3 bg-muted/50 rounded-md text-sm whitespace-pre-wrap">
+                {scholarship.eligibility}
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {scholarship.notes && (
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                <StickyNote className="h-4 w-4" />
+                Notes
+              </h4>
+              <div className="p-3 bg-muted/50 rounded-md text-sm whitespace-pre-wrap">
+                {scholarship.notes}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
