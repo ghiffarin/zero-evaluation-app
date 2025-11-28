@@ -913,6 +913,7 @@ model University {
   englishTest           String?  @map("english_test")
   applicationDeadline   String?  @map("application_deadline")
   fundingOptions        String?  @map("funding_options") @db.Text
+  websiteUrl            String?  @map("website_url") // Main university/program website
   notes                 String?  @db.Text
   priority              Int?     // 1-3 (high, medium, low)
   status                UniversityStatus @default(researching)
@@ -938,6 +939,7 @@ model Scholarship {
   coverage        String?  @db.Text // What does it cover (tuition, living, travel, etc.)
   eligibility     String?  @db.Text // Requirements to apply
   applicationLink String?  @map("application_link")
+  websiteUrl      String?  @map("website_url") // Main scholarship website
   deadline        String?  // Application deadline
   status          ScholarshipStatus @default(researching)
   priority        Int?     // 1-3 (high, medium, low)

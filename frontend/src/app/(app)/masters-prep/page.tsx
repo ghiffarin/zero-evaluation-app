@@ -139,6 +139,7 @@ interface University {
   englishTest?: string;
   applicationDeadline?: string;
   fundingOptions?: string;
+  websiteUrl?: string;
   notes?: string;
   priority?: number;
   status: string;
@@ -157,6 +158,7 @@ interface Scholarship {
   coverage?: string;
   eligibility?: string;
   applicationLink?: string;
+  websiteUrl?: string;
   deadline?: string;
   status: string;
   priority?: number;
@@ -1939,6 +1941,7 @@ function UniversityModal({
     englishTest: university?.englishTest || '',
     applicationDeadline: university?.applicationDeadline || '',
     fundingOptions: university?.fundingOptions || '',
+    websiteUrl: university?.websiteUrl || '',
     notes: university?.notes || '',
     priority: university?.priority?.toString() || '',
     status: university?.status || 'researching',
@@ -1963,6 +1966,7 @@ function UniversityModal({
       englishTest: formData.englishTest || undefined,
       applicationDeadline: formData.applicationDeadline || undefined,
       fundingOptions: formData.fundingOptions || undefined,
+      websiteUrl: formData.websiteUrl || undefined,
       notes: formData.notes || undefined,
       priority: formData.priority ? Number(formData.priority) : undefined,
       status: formData.status,
@@ -2046,6 +2050,15 @@ function UniversityModal({
                   value={formData.specialization}
                   onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
                   placeholder="e.g., Machine Learning, Sustainability"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Website URL</label>
+                <Input
+                  value={formData.websiteUrl}
+                  onChange={(e) => setFormData({ ...formData, websiteUrl: e.target.value })}
+                  placeholder="https://..."
                 />
               </div>
 
@@ -2196,6 +2209,7 @@ function ScholarshipModal({
     coverage: scholarship?.coverage || '',
     eligibility: scholarship?.eligibility || '',
     applicationLink: scholarship?.applicationLink || '',
+    websiteUrl: scholarship?.websiteUrl || '',
     deadline: scholarship?.deadline || '',
     status: scholarship?.status || 'researching',
     priority: scholarship?.priority?.toString() || '',
@@ -2219,6 +2233,7 @@ function ScholarshipModal({
       coverage: formData.coverage || undefined,
       eligibility: formData.eligibility || undefined,
       applicationLink: formData.applicationLink || undefined,
+      websiteUrl: formData.websiteUrl || undefined,
       deadline: formData.deadline || undefined,
       status: formData.status,
       priority: formData.priority ? Number(formData.priority) : undefined,
@@ -2380,6 +2395,15 @@ function ScholarshipModal({
                 <Input
                   value={formData.applicationLink}
                   onChange={(e) => setFormData({ ...formData, applicationLink: e.target.value })}
+                  placeholder="https://..."
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Website URL</label>
+                <Input
+                  value={formData.websiteUrl}
+                  onChange={(e) => setFormData({ ...formData, websiteUrl: e.target.value })}
                   placeholder="https://..."
                 />
               </div>
@@ -2571,6 +2595,25 @@ function UniversityPreviewModal({
             )}
           </div>
 
+          {/* Website URL */}
+          {university.websiteUrl && (
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                <Globe className="h-4 w-4" />
+                Website
+              </h4>
+              <a
+                href={university.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline flex items-center gap-1"
+              >
+                {university.websiteUrl}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          )}
+
           {/* Costs */}
           {(university.tuitionPerYear || university.livingCostPerYear) && (
             <div>
@@ -2750,6 +2793,25 @@ function ScholarshipPreviewModal({
                 className="text-sm text-primary hover:underline flex items-center gap-1"
               >
                 {scholarship.applicationLink}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          )}
+
+          {/* Website URL */}
+          {scholarship.websiteUrl && (
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                <Globe className="h-4 w-4" />
+                Website
+              </h4>
+              <a
+                href={scholarship.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline flex items-center gap-1"
+              >
+                {scholarship.websiteUrl}
                 <ExternalLink className="h-3 w-3" />
               </a>
             </div>
