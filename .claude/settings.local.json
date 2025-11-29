@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Get-Content ''d:\\6 Project\\personal-learning\\zero-evaluation-app\\frontend\\src\\components\\layout\\header.tsx''\")",
+      "Bash(powershell -Command \"Get-Content ''frontend\\src\\components\\layout\\header.tsx''\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

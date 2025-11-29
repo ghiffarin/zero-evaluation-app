@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Bell, Search, Sun, Moon, Monitor } from 'lucide-react';
+import { Search, Sun, Moon, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/avatar';
@@ -110,12 +110,6 @@ export function Header({ className, userName = 'User' }: HeaderProps) {
         {/* Theme toggle */}
         <Button variant="ghost" size="icon" onClick={cycleTheme} title={`Theme: ${theme}`}>
           {getThemeIcon()}
-        </Button>
-
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive" />
         </Button>
 
         {/* User avatar */}
