@@ -938,7 +938,7 @@ export default function MastersPrepPage() {
             </Button>
           </div>
 
-          {/* Universities Table */}
+          {/* Universities Cards */}
           {filteredUniversities.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
@@ -962,84 +962,79 @@ export default function MastersPrepPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3 text-sm font-medium">University</th>
-                    <th className="text-left p-3 text-sm font-medium">Country</th>
-                    <th className="text-left p-3 text-sm font-medium">Program</th>
-                    <th className="text-left p-3 text-sm font-medium">Length</th>
-                    <th className="text-left p-3 text-sm font-medium">Tuition/yr</th>
-                    <th className="text-left p-3 text-sm font-medium">Living/yr</th>
-                    <th className="text-left p-3 text-sm font-medium">Deadline</th>
-                    <th className="text-left p-3 text-sm font-medium">Status</th>
-                    <th className="text-center p-3 text-sm font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUniversities.map((uni) => (
-                    <tr
-                      key={uni.id}
-                      className="border-b hover:bg-muted/30 cursor-pointer"
-                      onClick={() => setPreviewUniversity(uni)}
-                    >
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          {uni.priority && (
-                            <Badge
-                              variant={uni.priority === 1 ? 'error' : uni.priority === 2 ? 'warning' : 'success'}
-                              className="text-xs"
-                            >
-                              P{uni.priority}
-                            </Badge>
-                          )}
-                          <span className="font-medium">{uni.universityName}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredUniversities.map((uni) => (
+                <Card
+                  key={uni.id}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => {
+                    setEditingUniversity(uni);
+                    setShowUniversityModal(true);
+                  }}
+                >
+                  <CardContent className="p-4">
+                    {/* Header with name and status */}
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-semibold text-lg leading-tight">{uni.universityName}</h3>
+                      <Badge variant={getUniversityStatusVariant(uni.status)} className="ml-2 shrink-0">
+                        {UNIVERSITY_STATUSES.find(s => s.value === uni.status)?.label || uni.status}
+                      </Badge>
+                    </div>
+
+                    {/* Description section for program/specialization */}
+                    {(uni.programName || uni.specialization) && (
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {[uni.programName, uni.specialization].filter(Boolean).join(' - ')}
+                      </p>
+                    )}
+
+                    {/* Info rows */}
+                    <div className="space-y-2 text-sm">
+                      {uni.country && (
+                        <div className="flex justify-between border-b border-border/[0.12] pb-2">
+                          <span className="text-muted-foreground">Country</span>
+                          <span className="font-medium text-right">{uni.country}</span>
                         </div>
-                        {uni.specialization && (
-                          <p className="text-xs text-muted-foreground mt-1">{uni.specialization}</p>
-                        )}
-                      </td>
-                      <td className="p-3 text-sm">{uni.country || '-'}</td>
-                      <td className="p-3 text-sm">{uni.programName || '-'}</td>
-                      <td className="p-3 text-sm">{uni.programLength || '-'}</td>
-                      <td className="p-3 text-sm">{uni.tuitionPerYear || '-'}</td>
-                      <td className="p-3 text-sm">{uni.livingCostPerYear || '-'}</td>
-                      <td className="p-3 text-sm">{uni.applicationDeadline || '-'}</td>
-                      <td className="p-3">
-                        <Badge variant={getUniversityStatusVariant(uni.status)}>
-                          {UNIVERSITY_STATUSES.find(s => s.value === uni.status)?.label || uni.status}
-                        </Badge>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingUniversity(uni);
-                              setShowUniversityModal(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteUniversity(uni.id);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                      )}
+                      {uni.programLength && (
+                        <div className="flex justify-between border-b border-border/[0.12] pb-2">
+                          <span className="text-muted-foreground">Duration</span>
+                          <span className="font-medium text-right">{uni.programLength}</span>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      )}
+                      {uni.tuitionPerYear && (
+                        <div className="flex justify-between border-b border-border/[0.12] pb-2">
+                          <span className="text-muted-foreground">Tuition/yr</span>
+                          <span className="font-medium text-right">{uni.tuitionPerYear}</span>
+                        </div>
+                      )}
+                      {uni.livingCostPerYear && (
+                        <div className="flex justify-between border-b border-border/[0.12] pb-2">
+                          <span className="text-muted-foreground">Living/yr</span>
+                          <span className="font-medium text-right">{uni.livingCostPerYear}</span>
+                        </div>
+                      )}
+                      {uni.applicationDeadline && (
+                        <div className="flex justify-between border-b border-border/[0.12] pb-2">
+                          <span className="text-muted-foreground">Deadline</span>
+                          <span className="font-medium text-right">{uni.applicationDeadline}</span>
+                        </div>
+                      )}
+                      {uni.priority && (
+                        <div className="flex justify-between pb-2">
+                          <span className="text-muted-foreground">Priority</span>
+                          <Badge
+                            variant={uni.priority === 1 ? 'error' : uni.priority === 2 ? 'warning' : 'success'}
+                            className="text-xs"
+                          >
+                            {uni.priority === 1 ? 'Top Choice' : uni.priority === 2 ? 'Good Option' : 'Backup'}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
         </>
@@ -1070,7 +1065,7 @@ export default function MastersPrepPage() {
             </Button>
           </div>
 
-          {/* Scholarships Table */}
+          {/* Scholarships Cards */}
           {filteredScholarships.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
@@ -1094,88 +1089,75 @@ export default function MastersPrepPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3 text-sm font-medium">Scholarship</th>
-                    <th className="text-left p-3 text-sm font-medium">University</th>
-                    <th className="text-left p-3 text-sm font-medium">Type</th>
-                    <th className="text-left p-3 text-sm font-medium">Amount</th>
-                    <th className="text-left p-3 text-sm font-medium">Deadline</th>
-                    <th className="text-left p-3 text-sm font-medium">Status</th>
-                    <th className="text-center p-3 text-sm font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredScholarships.map((sch) => (
-                    <tr
-                      key={sch.id}
-                      className="border-b hover:bg-muted/30 cursor-pointer"
-                      onClick={() => setPreviewScholarship(sch)}
-                    >
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          {sch.priority && (
-                            <Badge
-                              variant={sch.priority === 1 ? 'error' : sch.priority === 2 ? 'warning' : 'success'}
-                              className="text-xs"
-                            >
-                              P{sch.priority}
-                            </Badge>
-                          )}
-                          <span className="font-medium">{sch.name}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredScholarships.map((sch) => (
+                <Card
+                  key={sch.id}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => {
+                    setEditingScholarship(sch);
+                    setShowScholarshipModal(true);
+                  }}
+                >
+                  <CardContent className="p-4">
+                    {/* Header with name and status */}
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-semibold text-lg leading-tight">{sch.name}</h3>
+                      <Badge variant={getScholarshipStatusVariant(sch.status)} className="ml-2 shrink-0">
+                        {SCHOLARSHIP_STATUSES.find(s => s.value === sch.status)?.label || sch.status}
+                      </Badge>
+                    </div>
+
+                    {/* Description section for provider/coverage */}
+                    {(sch.provider || sch.coverage) && (
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {[sch.provider, sch.coverage].filter(Boolean).join(' - ')}
+                      </p>
+                    )}
+
+                    {/* Info rows */}
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between border-b border-border/[0.12] pb-2">
+                        <span className="text-muted-foreground">Type</span>
+                        <span className="font-medium text-right">
+                          {SCHOLARSHIP_TYPES.find(t => t.value === sch.type)?.label || sch.type}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-b border-border/[0.12] pb-2">
+                        <span className="text-muted-foreground">University</span>
+                        <span className="font-medium text-right">
+                          {sch.university ? sch.university.universityName : 'Any/General'}
+                        </span>
+                      </div>
+                      {sch.amount && (
+                        <div className="flex justify-between border-b border-border/[0.12] pb-2">
+                          <span className="text-muted-foreground">Amount</span>
+                          <span className="font-medium text-right">
+                            {sch.amount}{sch.currency ? ` ${sch.currency}` : ''}
+                          </span>
                         </div>
-                        {sch.provider && (
-                          <p className="text-xs text-muted-foreground mt-1">{sch.provider}</p>
-                        )}
-                      </td>
-                      <td className="p-3 text-sm">
-                        {sch.university ? (
-                          <span>{sch.university.universityName}</span>
-                        ) : (
-                          <span className="text-muted-foreground">Any/General</span>
-                        )}
-                      </td>
-                      <td className="p-3 text-sm">
-                        {SCHOLARSHIP_TYPES.find(t => t.value === sch.type)?.label || sch.type}
-                      </td>
-                      <td className="p-3 text-sm">{sch.amount || '-'}</td>
-                      <td className="p-3 text-sm">{sch.deadline || '-'}</td>
-                      <td className="p-3">
-                        <Badge variant={getScholarshipStatusVariant(sch.status)}>
-                          {SCHOLARSHIP_STATUSES.find(s => s.value === sch.status)?.label || sch.status}
-                        </Badge>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingScholarship(sch);
-                              setShowScholarshipModal(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteScholarship(sch.id);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                      )}
+                      {sch.deadline && (
+                        <div className="flex justify-between border-b border-border/[0.12] pb-2">
+                          <span className="text-muted-foreground">Deadline</span>
+                          <span className="font-medium text-right">{sch.deadline}</span>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      )}
+                      {sch.priority && (
+                        <div className="flex justify-between pb-2">
+                          <span className="text-muted-foreground">Priority</span>
+                          <Badge
+                            variant={sch.priority === 1 ? 'error' : sch.priority === 2 ? 'warning' : 'success'}
+                            className="text-xs"
+                          >
+                            {sch.priority === 1 ? 'High' : sch.priority === 2 ? 'Medium' : 'Low'}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
         </>
