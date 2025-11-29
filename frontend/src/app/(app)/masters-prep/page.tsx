@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { PageContainer, PageHeader, PageSection } from '@/components/layout';
 import {
   Card,
@@ -46,6 +47,7 @@ import {
   BarChart3,
   StickyNote,
   Link,
+  Link2,
   Eye,
   MapPin,
   Calendar,
@@ -130,16 +132,36 @@ interface University {
   id: string;
   universityName: string;
   country?: string;
+  city?: string;
   programName?: string;
   specialization?: string;
   programLength?: string;
+  programFormat?: string;
+  programStartDate?: string;
   tuitionPerYear?: string;
   livingCostPerYear?: string;
+  applicationFee?: string;
   admissionRequirements?: string;
+  requiredDocuments?: string;
   englishTest?: string;
+  ieltsMinScore?: number;
+  toeflMinScore?: number;
+  languageOfInstruction?: string;
   applicationDeadline?: string;
+  applicationOpenDate?: string;
+  decisionDate?: string;
   fundingOptions?: string;
+  scholarshipAvailable?: boolean;
   websiteUrl?: string;
+  applicationPortalUrl?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  classSize?: number;
+  acceptanceRate?: number;
+  personalFitScore?: number;
+  pros?: string;
+  cons?: string;
+  alumniNotes?: string;
   notes?: string;
   priority?: number;
   status: string;
@@ -223,6 +245,7 @@ const STATUSES = [
 ] as const;
 
 export default function MastersPrepPage() {
+  const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [items, setItems] = React.useState<PrepItem[]>([]);
   const [stats, setStats] = React.useState<PrepStats | null>(null);
@@ -967,10 +990,7 @@ export default function MastersPrepPage() {
                 <Card
                   key={uni.id}
                   className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => {
-                    setEditingUniversity(uni);
-                    setShowUniversityModal(true);
-                  }}
+                  onClick={() => router.push(`/masters-prep/universities/${uni.id}`)}
                 >
                   <CardContent className="p-4">
                     {/* Header with name and status */}
@@ -983,9 +1003,10 @@ export default function MastersPrepPage() {
 
                     {/* Description section for program/specialization */}
                     {(uni.programName || uni.specialization) && (
-                      <p className="text-sm text-muted-foreground mb-3">
-                        {[uni.programName, uni.specialization].filter(Boolean).join(' - ')}
-                      </p>
+                      <div className="text-sm text-muted-foreground mb-3 space-y-0.5">
+                        {uni.programName && <p>{uni.programName}</p>}
+                        {uni.specialization && <p>{uni.specialization}</p>}
+                      </div>
                     )}
 
                     {/* Info rows */}
@@ -1021,7 +1042,7 @@ export default function MastersPrepPage() {
                         </div>
                       )}
                       {uni.priority && (
-                        <div className="flex justify-between pb-2">
+                        <div className="flex justify-between border-b border-border/[0.12] pb-2">
                           <span className="text-muted-foreground">Priority</span>
                           <Badge
                             variant={uni.priority === 1 ? 'error' : uni.priority === 2 ? 'warning' : 'success'}
@@ -1031,7 +1052,43 @@ export default function MastersPrepPage() {
                           </Badge>
                         </div>
                       )}
+                      {uni.personalFitScore && (
+                        <div className="flex justify-between pb-2">
+                          <span className="text-muted-foreground">Fit Score</span>
+                          <span className="font-medium text-right">{uni.personalFitScore}/10</span>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Footer with links */}
+                    {(uni.websiteUrl || uni.applicationPortalUrl) && (
+                      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/30">
+                        {uni.websiteUrl && (
+                          <a
+                            href={uni.websiteUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Website
+                          </a>
+                        )}
+                        {uni.applicationPortalUrl && (
+                          <a
+                            href={uni.applicationPortalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                          >
+                            <Link2 className="h-3 w-3" />
+                            Apply
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -1094,10 +1151,7 @@ export default function MastersPrepPage() {
                 <Card
                   key={sch.id}
                   className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => {
-                    setEditingScholarship(sch);
-                    setShowScholarshipModal(true);
-                  }}
+                  onClick={() => router.push(`/masters-prep/scholarships/${sch.id}`)}
                 >
                   <CardContent className="p-4">
                     {/* Header with name and status */}

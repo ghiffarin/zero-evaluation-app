@@ -904,16 +904,37 @@ model University {
   userId                String   @map("user_id")
   universityName        String   @map("university_name")
   country               String?
+  city                  String?  // Campus location/city
   programName           String?  @map("program_name")
   specialization        String?
   programLength         String?  @map("program_length")
+  programFormat         String?  @map("program_format") // full-time, part-time, online, hybrid
+  programStartDate      String?  @map("program_start_date") // When the program begins
   tuitionPerYear        String?  @map("tuition_per_year")
   livingCostPerYear     String?  @map("living_cost_per_year")
+  applicationFee        String?  @map("application_fee") // Cost to apply
   admissionRequirements String?  @map("admission_requirements") @db.Text
+  requiredDocuments     String?  @map("required_documents") @db.Text // CV, SOP, transcripts, etc.
   englishTest           String?  @map("english_test")
+  ieltsMinScore         Float?   @map("ielts_min_score") // Minimum IELTS score
+  toeflMinScore         Int?     @map("toefl_min_score") // Minimum TOEFL score
+  languageOfInstruction String?  @map("language_of_instruction") // English, German, etc.
   applicationDeadline   String?  @map("application_deadline")
+  applicationOpenDate   String?  @map("application_open_date") // When applications open
+  decisionDate          String?  @map("decision_date") // Expected decision date
   fundingOptions        String?  @map("funding_options") @db.Text
+  scholarshipAvailable  Boolean? @map("scholarship_available") // Quick flag for scholarship availability
   websiteUrl            String?  @map("website_url") // Main university/program website
+  applicationPortalUrl  String?  @map("application_portal_url") // Direct link to apply
+  contactEmail          String?  @map("contact_email") // Admissions email
+  contactPhone          String?  @map("contact_phone") // Department contact
+  classSize             Int?     @map("class_size") // If known
+  acceptanceRate        Float?   @map("acceptance_rate") // Historical data (as percentage)
+  personalFitScore      Int?     @map("personal_fit_score") // Self-rating 1-10
+  pros                  String?  @db.Text // Quick pros list
+  cons                  String?  @db.Text // Quick cons list
+  alumniNotes           String?  @map("alumni_notes") @db.Text // Notes about networking/alumni
+  relatedContacts       Json?    @map("related_contacts") // Array of {name, email, phone, role} objects
   notes                 String?  @db.Text
   priority              Int?     // 1-3 (high, medium, low)
   status                UniversityStatus @default(researching)
