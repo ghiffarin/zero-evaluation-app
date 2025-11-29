@@ -8,6 +8,12 @@ const itemCrud = createCrudController({
   model: 'mastersPrepItem',
   include: {
     relatedGoal: true,
+    university: {
+      select: { id: true, universityName: true, country: true, programName: true },
+    },
+    scholarship: {
+      select: { id: true, name: true, provider: true, type: true },
+    },
     sessions: {
       orderBy: { date: 'desc' },
       take: 5,

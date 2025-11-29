@@ -73,6 +73,8 @@ interface PrepItem {
   taskTitle: string;
   description?: string;
   relatedGoalId?: string;
+  universityId?: string;
+  scholarshipId?: string;
   priority?: number;
   status: string;
   progressPercent?: number;
@@ -86,6 +88,8 @@ interface PrepItem {
   updatedAt: string;
   sessions?: PrepSession[];
   relatedGoal?: { id: string; title: string };
+  university?: { id: string; universityName: string; country?: string; programName?: string };
+  scholarship?: { id: string; name: string; provider?: string; type?: string };
 }
 
 interface PrepStats {
@@ -109,14 +113,6 @@ interface PrepStats {
     high: number;
     medium: number;
     low: number;
-  };
-}
-
-interface ReadinessBreakdown {
-  [category: string]: {
-    items: PrepItem[];
-    averageReadiness: number;
-    averageProgress: number;
   };
 }
 
@@ -249,7 +245,6 @@ export default function MastersPrepPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [items, setItems] = React.useState<PrepItem[]>([]);
   const [stats, setStats] = React.useState<PrepStats | null>(null);
-  const [readinessBreakdown, setReadinessBreakdown] = React.useState<ReadinessBreakdown | null>(null);
   const [notes, setNotes] = React.useState<QuickNote[]>([]);
   const [universities, setUniversities] = React.useState<University[]>([]);
   const [scholarships, setScholarships] = React.useState<Scholarship[]>([]);
@@ -270,7 +265,7 @@ export default function MastersPrepPage() {
   const [previewScholarship, setPreviewScholarship] = React.useState<Scholarship | null>(null);
 
   // Filters & View
-  const [activeTab, setActiveTab] = React.useState<'items' | 'readiness' | 'notes' | 'universities' | 'scholarships'>('items');
+  const [activeTab, setActiveTab] = React.useState<'items' | 'notes' | 'universities' | 'scholarships'>('items');
   const [filterCategory, setFilterCategory] = React.useState<string>('all');
   const [filterStatus, setFilterStatus] = React.useState<string>('all');
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -286,17 +281,15 @@ export default function MastersPrepPage() {
     async function fetchData() {
       try {
         setLoading(true);
-        const [itemsRes, statsRes, readinessRes, notesRes, universitiesRes, scholarshipsRes] = await Promise.all([
+        const [itemsRes, statsRes, notesRes, universitiesRes, scholarshipsRes] = await Promise.all([
           api.mastersPrep.list({ limit: 100 }),
           api.mastersPrep.stats(),
-          api.mastersPrep.readiness(),
           api.mastersPrep.notes.list({ limit: 100 }),
           api.mastersPrep.universities.list({ limit: 100 }),
           api.mastersPrep.scholarships.list({ limit: 100 }),
         ]);
         setItems((itemsRes as any).data || []);
         setStats((statsRes as any).data || null);
-        setReadinessBreakdown((readinessRes as any).data || null);
         setNotes((notesRes as any).data || []);
         setUniversities((universitiesRes as any).data || []);
         setScholarships((scholarshipsRes as any).data || []);
@@ -313,17 +306,15 @@ export default function MastersPrepPage() {
   // Refresh stats
   const refreshData = async () => {
     try {
-      const [itemsRes, statsRes, readinessRes, notesRes, universitiesRes, scholarshipsRes] = await Promise.all([
+      const [itemsRes, statsRes, notesRes, universitiesRes, scholarshipsRes] = await Promise.all([
         api.mastersPrep.list({ limit: 100 }),
         api.mastersPrep.stats(),
-        api.mastersPrep.readiness(),
         api.mastersPrep.notes.list({ limit: 100 }),
         api.mastersPrep.universities.list({ limit: 100 }),
         api.mastersPrep.scholarships.list({ limit: 100 }),
       ]);
       setItems((itemsRes as any).data || []);
       setStats((statsRes as any).data || null);
-      setReadinessBreakdown((readinessRes as any).data || null);
       setNotes((notesRes as any).data || []);
       setUniversities((universitiesRes as any).data || []);
       setScholarships((scholarshipsRes as any).data || []);
@@ -633,16 +624,6 @@ export default function MastersPrepPage() {
         </button>
         <button
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'readiness'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-          onClick={() => setActiveTab('readiness')}
-        >
-          Readiness by Category
-        </button>
-        <button
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'notes'
               ? 'border-primary text-primary'
               : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -757,88 +738,6 @@ export default function MastersPrepPage() {
             </div>
           )}
         </>
-      )}
-
-      {/* Readiness Tab */}
-      {activeTab === 'readiness' && readinessBreakdown && (
-        <div className="space-y-6">
-          {Object.entries(readinessBreakdown).map(([category, data]) => {
-            const categoryInfo = CATEGORIES.find((c) => c.value === category);
-            const CategoryIcon = categoryInfo?.icon || GraduationCap;
-            return (
-              <Card key={category}>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <CategoryIcon className="h-5 w-5" />
-                      {categoryInfo?.label || category}
-                    </span>
-                    <div className="flex items-center gap-4 text-sm font-normal">
-                      <span className="flex items-center gap-1">
-                        <BarChart3 className="h-4 w-4" />
-                        Progress: {data.averageProgress.toFixed(0)}%
-                      </span>
-                      <span className={`flex items-center gap-1 ${getReadinessColor(data.averageReadiness)}`}>
-                        <Target className="h-4 w-4" />
-                        Readiness: {data.averageReadiness?.toFixed(1) || '-'}/5
-                      </span>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {data.items.map((item) => {
-                      const statusInfo = STATUSES.find((s) => s.value === item.status);
-                      const StatusIcon = statusInfo?.icon || Circle;
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between p-3 border rounded-md hover:bg-muted/50 cursor-pointer"
-                          onClick={() => {
-                            setEditingItem(item as PrepItem);
-                            setShowItemModal(true);
-                          }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <StatusIcon className={`h-4 w-4 ${statusInfo?.color || ''}`} />
-                            <div>
-                              <p className="font-medium text-sm">{item.taskTitle}</p>
-                              {item.subcategory && (
-                                <p className="text-xs text-muted-foreground">{item.subcategory}</p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            {item.priority && (
-                              <Badge
-                                variant={item.priority === 1 ? 'error' : item.priority === 2 ? 'warning' : 'success'}
-                              >
-                                P{item.priority}
-                              </Badge>
-                            )}
-                            <div className="text-right">
-                              <p className="text-sm">{item.progressPercent || 0}%</p>
-                              <p className={`text-xs ${getReadinessColor(item.readinessScore || null)}`}>
-                                {item.readinessScore ? `${item.readinessScore}/5` : '-'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-          {Object.keys(readinessBreakdown).length === 0 && (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <p className="text-muted-foreground">No prep items to show readiness breakdown.</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
       )}
 
       {/* Notes Tab */}
@@ -1221,6 +1120,8 @@ export default function MastersPrepPage() {
       {showItemModal && (
         <PrepItemModal
           item={editingItem}
+          universities={universities}
+          scholarships={scholarships}
           onClose={() => {
             setShowItemModal(false);
             setEditingItem(null);
@@ -1431,6 +1332,25 @@ function PrepItemCard({
               <p className="text-sm text-muted-foreground mt-1">{item.subcategory}</p>
             )}
 
+            {/* Linked University/Scholarship badges */}
+            {(item.university || item.scholarship) && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {item.university && (
+                  <Badge variant="info" className="text-xs flex items-center gap-1">
+                    <Building className="h-3 w-3" />
+                    {item.university.universityName}
+                    {item.university.country && ` (${item.university.country})`}
+                  </Badge>
+                )}
+                {item.scholarship && (
+                  <Badge variant="warning" className="text-xs flex items-center gap-1">
+                    <Award className="h-3 w-3" />
+                    {item.scholarship.name}
+                  </Badge>
+                )}
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-3 mt-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
                 <TrendingUp className="h-3 w-3" />
@@ -1539,10 +1459,14 @@ function PrepItemCard({
 
 function PrepItemModal({
   item,
+  universities,
+  scholarships,
   onClose,
   onSave,
 }: {
   item: PrepItem | null;
+  universities: University[];
+  scholarships: Scholarship[];
   onClose: () => void;
   onSave: (data: Partial<PrepItem>) => void;
 }) {
@@ -1559,6 +1483,8 @@ function PrepItemModal({
     readinessScore: item?.readinessScore || '',
     nextStep: item?.nextStep || '',
     notes: item?.notes || '',
+    universityId: item?.universityId || '',
+    scholarshipId: item?.scholarshipId || '',
   });
   const [saving, setSaving] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState(0);
@@ -1581,6 +1507,8 @@ function PrepItemModal({
       readinessScore: formData.readinessScore ? Number(formData.readinessScore) : undefined,
       nextStep: formData.nextStep || undefined,
       notes: formData.notes || undefined,
+      universityId: formData.universityId || null,
+      scholarshipId: formData.scholarshipId || null,
     });
     setSaving(false);
   };
@@ -1674,6 +1602,49 @@ function PrepItemModal({
                   <option value="3">3 - Low Priority</option>
                 </select>
               </div>
+
+              {/* Link to University/Scholarship */}
+              {universities.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium">Link to University</label>
+                  <select
+                    value={formData.universityId}
+                    onChange={(e) => setFormData({ ...formData, universityId: e.target.value })}
+                    className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    <option value="">None</option>
+                    {universities.map((uni) => (
+                      <option key={uni.id} value={uni.id}>
+                        {uni.universityName}{uni.programName ? ` - ${uni.programName}` : ''}{uni.country ? ` (${uni.country})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Link this prep item to a university you&apos;re tracking
+                  </p>
+                </div>
+              )}
+
+              {scholarships.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium">Link to Scholarship</label>
+                  <select
+                    value={formData.scholarshipId}
+                    onChange={(e) => setFormData({ ...formData, scholarshipId: e.target.value })}
+                    className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    <option value="">None</option>
+                    {scholarships.map((sch) => (
+                      <option key={sch.id} value={sch.id}>
+                        {sch.name}{sch.provider ? ` (${sch.provider})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Link this prep item to a scholarship you&apos;re tracking
+                  </p>
+                </div>
+              )}
             </>
           )}
 

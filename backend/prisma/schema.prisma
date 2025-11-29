@@ -825,6 +825,8 @@ model MastersPrepItem {
   taskTitle       String             @map("task_title")
   description     String?            @db.Text
   relatedGoalId   String?            @map("related_goal_id")
+  universityId    String?            @map("university_id")
+  scholarshipId   String?            @map("scholarship_id")
   priority        Int?               // 1-3
   status          MastersPrepStatus  @default(not_started)
   progressPercent Int?               @default(0) @map("progress_percent")
@@ -840,6 +842,8 @@ model MastersPrepItem {
   // Relations
   user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   relatedGoal Goal?                 @relation(fields: [relatedGoalId], references: [id], onDelete: SetNull)
+  university  University?           @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  scholarship Scholarship?          @relation(fields: [scholarshipId], references: [id], onDelete: SetNull)
   sessions    MastersPrepSession[]
 
   @@map("masters_prep_items")
@@ -942,8 +946,9 @@ model University {
   updatedAt             DateTime @updatedAt @map("updated_at")
 
   // Relations
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   scholarships Scholarship[]
+  prepItems    MastersPrepItem[]
 
   @@map("universities")
 }
@@ -969,8 +974,9 @@ model Scholarship {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   // Relations
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  university University? @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university University?       @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  prepItems  MastersPrepItem[]
 
   @@map("scholarships")
 }
