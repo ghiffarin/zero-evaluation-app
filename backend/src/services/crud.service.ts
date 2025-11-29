@@ -25,6 +25,9 @@ type PrismaModelName =
   | 'jobApplication'
   | 'mastersPrepItem'
   | 'mastersPrepSession'
+  | 'mastersPrepNote'
+  | 'university'
+  | 'scholarship'
   | 'project'
   | 'goal'
   | 'tag';

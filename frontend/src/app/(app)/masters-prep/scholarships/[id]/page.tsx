@@ -30,6 +30,8 @@ import {
   X,
   Link as LinkIcon,
   Users,
+  Plus,
+  Wallet,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
@@ -40,6 +42,25 @@ interface University {
   universityName: string;
   country?: string;
 }
+
+interface FundingItem {
+  type: string;
+  amount: string;
+  currency?: string;
+  description?: string;
+}
+
+const FUNDING_TYPES = [
+  { value: 'tuition', label: 'Tuition Funding' },
+  { value: 'monthly_allowance', label: 'Monthly Allowance' },
+  { value: 'travel', label: 'Travel Allowance' },
+  { value: 'health_insurance', label: 'Health Insurance' },
+  { value: 'books', label: 'Books & Materials' },
+  { value: 'housing', label: 'Housing Allowance' },
+  { value: 'research', label: 'Research Grant' },
+  { value: 'one_time', label: 'One-time Payment' },
+  { value: 'other', label: 'Other' },
+] as const;
 
 interface Scholarship {
   id: string;
@@ -57,6 +78,7 @@ interface Scholarship {
   status: string;
   priority?: number;
   notes?: string;
+  funding?: FundingItem[];
   createdAt: string;
   updatedAt: string;
   university?: University;
@@ -116,6 +138,138 @@ const getPriorityVariant = (priority?: number): 'error' | 'warning' | 'success' 
     default: return 'default';
   }
 };
+
+// Funding Display Component (read-only view)
+const FundingDisplay = React.memo(function FundingDisplay({ funding }: { funding: FundingItem[] }) {
+  if (!funding || funding.length === 0) {
+    return <p className="text-sm text-muted-foreground">No funding details specified</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {funding.map((item, index) => {
+        const typeLabel = FUNDING_TYPES.find(t => t.value === item.type)?.label || item.type;
+        return (
+          <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+            <Wallet className="h-4 w-4 text-muted-foreground mt-0.5" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">{typeLabel}</p>
+                <p className="text-sm font-semibold text-primary">
+                  {item.amount}{item.currency ? ` ${item.currency}` : ''}
+                </p>
+              </div>
+              {item.description && (
+                <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+});
+
+// Funding Editor Component (edit mode)
+function FundingEditor({
+  funding,
+  onChange,
+}: {
+  funding: FundingItem[];
+  onChange: (funding: FundingItem[]) => void;
+}) {
+  const addFundingItem = () => {
+    onChange([...funding, { type: 'tuition', amount: '', currency: 'EUR' }]);
+  };
+
+  const updateFundingItem = (index: number, field: keyof FundingItem, value: string) => {
+    const updated = [...funding];
+    updated[index] = { ...updated[index], [field]: value };
+    onChange(updated);
+  };
+
+  const removeFundingItem = (index: number) => {
+    onChange(funding.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="space-y-4">
+      {funding.length === 0 && (
+        <p className="text-sm text-muted-foreground">No funding items. Click "Add Funding" to add one.</p>
+      )}
+      {funding.map((item, index) => (
+        <div key={index} className="p-4 rounded-lg border bg-background space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Funding Item {index + 1}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => removeFundingItem(index)}
+              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Type</Label>
+              <select
+                value={item.type}
+                onChange={(e) => updateFundingItem(index, 'type', e.target.value)}
+                className="w-full h-9 px-3 py-1 text-sm rounded-md border border-input bg-background"
+              >
+                {FUNDING_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Label className="text-xs">Amount</Label>
+                <Input
+                  value={item.amount}
+                  onChange={(e) => updateFundingItem(index, 'amount', e.target.value)}
+                  placeholder="e.g., 1000"
+                  className="h-9"
+                />
+              </div>
+              <div className="w-20">
+                <Label className="text-xs">Currency</Label>
+                <Input
+                  value={item.currency || ''}
+                  onChange={(e) => updateFundingItem(index, 'currency', e.target.value)}
+                  placeholder="EUR"
+                  className="h-9"
+                />
+              </div>
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Description (optional)</Label>
+            <Input
+              value={item.description || ''}
+              onChange={(e) => updateFundingItem(index, 'description', e.target.value)}
+              placeholder="e.g., Per month, One-time payment, etc."
+              className="h-9"
+            />
+          </div>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        onClick={addFundingItem}
+        className="w-full"
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        Add Funding
+      </Button>
+    </div>
+  );
+}
 
 // Memoized InfoRow component
 const InfoRow = React.memo(function InfoRow({
@@ -228,7 +382,9 @@ export default function ScholarshipDetailPage() {
     if (!scholarship) return;
     try {
       setSaving(true);
-      const response = await api.put<Scholarship>(`/masters-prep/scholarships/${id}`, formData);
+      // Strip out fields that shouldn't be sent to the API
+      const { id: _id, createdAt, updatedAt, university, ...updateData } = formData as Scholarship;
+      const response = await api.put<Scholarship>(`/masters-prep/scholarships/${id}`, updateData);
       setScholarship(response.data);
       setIsEditing(false);
     } catch (err) {
@@ -444,12 +600,32 @@ export default function ScholarshipDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Coverage */}
+          {/* Funding */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wallet className="h-5 w-5" />
+                Funding
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isEditing ? (
+                <FundingEditor
+                  funding={(formData.funding as FundingItem[]) || []}
+                  onChange={(funding) => setFormData(prev => ({ ...prev, funding }))}
+                />
+              ) : (
+                <FundingDisplay funding={scholarship.funding || []} />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Coverage (Text Description) */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5" />
-                Coverage
+                Coverage Details
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -457,13 +633,13 @@ export default function ScholarshipDetailPage() {
                 <textarea
                   value={formData.coverage || ''}
                   onChange={(e) => updateFormField('coverage', e.target.value)}
-                  placeholder="Describe what this scholarship covers (tuition, living expenses, travel, etc.)..."
-                  className="w-full min-h-[120px] px-3 py-2 text-sm rounded-md border border-input bg-background"
+                  placeholder="Additional details about what this scholarship covers..."
+                  className="w-full min-h-[100px] px-3 py-2 text-sm rounded-md border border-input bg-background"
                 />
               ) : scholarship.coverage ? (
                 <p className="text-sm whitespace-pre-wrap">{scholarship.coverage}</p>
               ) : (
-                <p className="text-sm text-muted-foreground">No coverage information specified</p>
+                <p className="text-sm text-muted-foreground">No additional coverage details</p>
               )}
             </CardContent>
           </Card>
