@@ -1,11 +1,14 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { PageContainer, PageHeader } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Label, Select } from '@/components/ui';
+import { FileText, ChevronRight } from 'lucide-react';
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { user, updateProfile, logout } = useAuth();
   const [name, setName] = React.useState(user?.name || '');
   const [timezone, setTimezone] = React.useState(user?.timezone || 'Asia/Jakarta');
@@ -86,6 +89,28 @@ export default function SettingsPage() {
                 {isLoading ? 'Saving...' : 'Save Changes'}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Reports & Analytics */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Reports & Analytics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <button
+              onClick={() => router.push('/reports')}
+              className="w-full flex items-center justify-between p-4 rounded-lg border hover:bg-accent transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+                <div className="text-left">
+                  <p className="font-medium">Monthly Reports</p>
+                  <p className="text-sm text-muted-foreground">View comprehensive monthly activity summaries</p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </button>
           </CardContent>
         </Card>
 
