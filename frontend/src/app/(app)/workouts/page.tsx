@@ -347,17 +347,28 @@ export default function WorkoutsPage() {
         .slice(0, 5)
     : [];
 
-  // Helper function for daily workout duration data (stacked by workout type)
-  function getDailyWorkoutData(workoutSessions: WorkoutSession[]) {
+  // Helper function to get last 7 days
+  function getLast7Days() {
     const days: { date: string; displayDate: string }[] = [];
+    const now = new Date();
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
     for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
+      const date = new Date(now);
+      date.setDate(now.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      const displayDate = `${date.getDate()} ${dayNames[date.getDay()]}`;
       days.push({
-        date: date.toISOString().split('T')[0],
-        displayDate: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        date: dateStr,
+        displayDate: displayDate,
       });
     }
+    return days;
+  }
+
+  // Helper function for daily workout duration data (stacked by workout type)
+  function getDailyWorkoutData(workoutSessions: WorkoutSession[]) {
+    const days = getLast7Days();
 
     return days.map(({ date, displayDate }) => {
       const daySessions = workoutSessions.filter(s => s.date.split('T')[0] === date);
@@ -380,15 +391,7 @@ export default function WorkoutsPage() {
 
   // Helper function for daily calories data (stacked by workout type)
   function getDailyCaloriesData(workoutSessions: WorkoutSession[]) {
-    const days: { date: string; displayDate: string }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      days.push({
-        date: date.toISOString().split('T')[0],
-        displayDate: date.toLocaleDateString('en-US', { weekday: 'short' }),
-      });
-    }
+    const days = getLast7Days();
 
     return days.map(({ date, displayDate }) => {
       const daySessions = workoutSessions.filter(s => s.date.split('T')[0] === date);

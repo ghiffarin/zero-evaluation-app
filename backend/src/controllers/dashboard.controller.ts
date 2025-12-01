@@ -339,8 +339,9 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
     career.forEach(c => allDatesWithData.add(formatDate(c.date)));
     financial.forEach(f => allDatesWithData.add(formatDate(f.date)));
 
-    // Sort dates chronologically
-    const dateRange = Array.from(allDatesWithData).sort();
+    // Sort dates and take only the most recent ones (up to 14 days)
+    const sortedDates = Array.from(allDatesWithData).sort();
+    const dateRange = sortedDates.slice(-14); // Last 14 dates with data
 
     // If no data at all, return empty response
     if (dateRange.length === 0) {
@@ -383,14 +384,15 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
     const financialByDate = groupByDate(financial);
     const wellnessByDate = groupByDate(wellness);
 
-    // Helper to format display date properly (avoiding timezone issues)
+    // Helper to format display date as D Day
     const formatDisplayDate = (dateStr: string) => {
       const [year, month, day] = dateStr.split('-').map(Number);
-      const d = new Date(year, month - 1, day);
-      return `${day} ${d.toLocaleDateString('en-US', { weekday: 'short' })}`;
+      const date = new Date(year, month - 1, day);
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      return `${day} ${dayNames[date.getDay()]}`;
     };
 
-    // 1. Time Investment Chart Data - only dates with time tracking data
+    // 1. Time Investment Chart Data - show all days of the week
     const timeInvestmentData = dateRange
       .map(date => {
         const dayWorkouts = workoutsByDate.get(date) || [];
@@ -409,11 +411,6 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
         ) / 60;
         const workHours = dayCareer.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60;
 
-        // Only include if there's any time data
-        if (workoutHours === 0 && learningHours === 0 && workHours === 0) {
-          return null;
-        }
-
         return {
           date,
           displayDate: formatDisplayDate(date),
@@ -421,25 +418,22 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
           learning: Number(learningHours.toFixed(2)),
           work: Number(workHours.toFixed(2)),
         };
-      })
-      .filter(Boolean);
+      });
 
-    // 2. Wellness Trend Data - only dates with wellness data
+    // 2. Wellness Trend Data - show all days of the week
     const wellnessTrendData = dateRange
       .map(date => {
         const dayWellness = wellnessByDate.get(date)?.[0];
-        if (!dayWellness) return null;
 
         return {
           date,
           displayDate: formatDisplayDate(date),
-          sleep: dayWellness.sleepHours || null,
-          energy: dayWellness.energyLevel || null,
-          mood: dayWellness.moodScore || null,
-          stress: dayWellness.stressLevel || null,
+          sleep: dayWellness?.sleepHours || null,
+          energy: dayWellness?.energyLevel || null,
+          mood: dayWellness?.moodScore || null,
+          stress: dayWellness?.stressLevel || null,
         };
-      })
-      .filter(Boolean);
+      });
 
     // 3. Learning Breakdown Data (daily stacked bar chart - dates on X-axis, hours on Y-axis)
     const totalIeltsMin = ielts.reduce((sum, i) => sum + (i.timeSpentMin || 0), 0);
@@ -459,11 +453,6 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
         const booksHours = dayBooks.reduce((sum, b) => sum + (b.timeSpentMin || 0), 0) / 60;
         const mastersPrepHours = dayMastersPrep.reduce((sum, m) => sum + (m.timeSpentMin || 0), 0) / 60;
 
-        // Only include if there's any learning data
-        if (ieltsHours === 0 && skillsHours === 0 && booksHours === 0 && mastersPrepHours === 0) {
-          return null;
-        }
-
         return {
           date,
           displayDate: formatDisplayDate(date),
@@ -472,8 +461,7 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
           books: Number(booksHours.toFixed(2)),
           mastersPrep: Number(mastersPrepHours.toFixed(2)),
         };
-      })
-      .filter(Boolean);
+      });
 
     // 4. Financial Flow Data - group by actual weeks with data
     const financialDates = financial.map(f => formatDate(f.date)).sort();

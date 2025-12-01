@@ -153,20 +153,31 @@ const WELLNESS_COLORS = {
   anxiety: '#ec4899',     // pink
 };
 
+// Helper function to get last 7 days
+function getLast7Days() {
+  const days: { date: string; displayDate: string }[] = [];
+  const now = new Date();
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(now);
+    date.setDate(now.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    const displayDate = `${date.getDate()} ${dayNames[date.getDay()]}`;
+    days.push({
+      date: dateStr,
+      displayDate: displayDate,
+    });
+  }
+  return days;
+}
+
 // Helper function for wellness trend data (last 7 days time series)
 function getWellnessTrendData(
   trend: Array<{ date: string; wellnessScore: number | null; sleepHours: number | null; energyLevel: number | null; moodScore: number | null }>,
   wellnessEntries: WellnessEntry[]
 ) {
-  const days: { date: string; displayDate: string }[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    days.push({
-      date: date.toISOString().split('T')[0],
-      displayDate: date.toLocaleDateString('en-US', { weekday: 'short' }),
-    });
-  }
+  const days = getLast7Days();
 
   return days.map(({ date, displayDate }) => {
     const dayEntry = wellnessEntries.find(e => e.date.split('T')[0] === date);
@@ -182,15 +193,7 @@ function getWellnessTrendData(
 
 // Helper function for sleep data (last 7 days time series)
 function getSleepData(wellnessEntries: WellnessEntry[]) {
-  const days: { date: string; displayDate: string }[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    days.push({
-      date: date.toISOString().split('T')[0],
-      displayDate: date.toLocaleDateString('en-US', { weekday: 'short' }),
-    });
-  }
+  const days = getLast7Days();
 
   return days.map(({ date, displayDate }) => {
     const dayEntry = wellnessEntries.find(e => e.date.split('T')[0] === date);
@@ -420,7 +423,7 @@ export default function WellnessPage() {
 
           {/* Analytics Charts */}
           {stats && stats.totalEntries > 0 && stats.trend && stats.trend.length > 0 && (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
               {/* Wellness Trend (Line Chart) */}
               <Card>
                 <CardHeader className="pb-2">
@@ -511,37 +514,6 @@ export default function WellnessPage() {
                         />
                         <Bar dataKey="hours" name="Sleep" fill={WELLNESS_COLORS.sleep} radius={[4, 4, 0, 0]} />
                       </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Health Radar */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Health Overview</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="h-[180px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart
-                        data={[
-                          { metric: 'Sleep', value: stats.averages.sleepQuality || 0, fullMark: 5 },
-                          { metric: 'Energy', value: stats.averages.energyLevel || 0, fullMark: 5 },
-                          { metric: 'Mood', value: stats.averages.moodScore || 0, fullMark: 5 },
-                          { metric: 'Clarity', value: stats.averages.mentalClarity || 0, fullMark: 5 },
-                          { metric: 'Diet', value: stats.averages.dietDiscipline || 0, fullMark: 5 },
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={55}
-                      >
-                        <PolarGrid stroke={chartColors.gridStroke} />
-                        <PolarAngleAxis dataKey="metric" tick={{ fill: chartColors.axisColor, fontSize: 9 }} />
-                        <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fill: chartColors.axisColor, fontSize: 8 }} />
-                        <Radar name="Avg" dataKey="value" stroke={WELLNESS_COLORS.wellness} fill={WELLNESS_COLORS.wellness} fillOpacity={0.3} />
-                        <Tooltip cursor={false} {...tooltipStyles} formatter={(value: number) => [`${value?.toFixed(1)}`, 'Score']} />
-                      </RadarChart>
                     </ResponsiveContainer>
                   </div>
                 </CardContent>

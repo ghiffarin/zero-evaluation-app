@@ -916,7 +916,7 @@ function SessionModal({
               <label className="text-sm font-medium">Skill Type</label>
               <select
                 value={formData.skillType}
-                onChange={(e) => setFormData({ ...formData, skillType: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, skillType: e.target.value as IeltsSession['skillType'] })}
                 className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
                 required
               >
@@ -1125,18 +1125,28 @@ function getSkillBgColor(skill: string): string {
   return colors[skill] || 'bg-gray-500/10 text-gray-600';
 }
 
-// Helper function to generate daily practice time data for time series chart
-function getDailyPracticeData(sessions: IeltsSession[]) {
-  // Get last 7 days
+// Helper function to get last 7 days
+function getLast7Days() {
   const days: { date: string; displayDate: string }[] = [];
+  const now = new Date();
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
   for (let i = 6; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
+    const date = new Date(now);
+    date.setDate(now.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    const displayDate = `${date.getDate()} ${dayNames[date.getDay()]}`;
     days.push({
-      date: date.toISOString().split('T')[0],
-      displayDate: date.toLocaleDateString('en-US', { weekday: 'short' }),
+      date: dateStr,
+      displayDate: displayDate,
     });
   }
+  return days;
+}
+
+// Helper function to generate daily practice time data for time series chart
+function getDailyPracticeData(sessions: IeltsSession[]) {
+  const days = getLast7Days();
 
   return days.map(({ date, displayDate }) => {
     const daySessions = sessions.filter(s => s.date.split('T')[0] === date);
@@ -1165,16 +1175,7 @@ function getDailyPracticeData(sessions: IeltsSession[]) {
 
 // Helper function to generate daily band score data for time series chart
 function getDailyBandData(sessions: IeltsSession[]) {
-  // Get last 7 days
-  const days: { date: string; displayDate: string }[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    days.push({
-      date: date.toISOString().split('T')[0],
-      displayDate: date.toLocaleDateString('en-US', { weekday: 'short' }),
-    });
-  }
+  const days = getLast7Days();
 
   return days.map(({ date, displayDate }) => {
     const daySessions = sessions.filter(s => s.date.split('T')[0] === date);

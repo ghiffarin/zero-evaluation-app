@@ -330,8 +330,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* 3 Charts Grid - Even 3 columns */}
-        <div className="grid gap-4 md:grid-cols-3">
+        {/* 2 Charts Grid - Even 2 columns */}
+        <div className="grid gap-4 md:grid-cols-2">
           {/* Wellness Trend */}
           <Card>
             <CardHeader className="py-2 px-3">
@@ -472,71 +472,6 @@ export default function DashboardPage() {
                     No learning data yet
                   </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Financial Flow */}
-          <Card>
-            <CardHeader className="py-2 px-3">
-              <CardTitle className="text-sm font-medium">Financial Flow</CardTitle>
-            </CardHeader>
-            <CardContent className="p-2">
-              <div className="h-[180px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData?.financialFlow || []} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
-                    <XAxis
-                      dataKey="week"
-                      tick={{ fontSize: 9, fill: chartColors.axisColor }}
-                      stroke={chartColors.gridStroke}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 9, fill: chartColors.axisColor }}
-                      tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
-                      stroke={chartColors.gridStroke}
-                      width={25}
-                    />
-                    <Tooltip
-                      cursor={false}
-                      {...tooltipStyles}
-                      content={({ active, payload }) => {
-                        if (!active || !payload) return null;
-                        const nonZeroItems = payload.filter((item: any) => item.value > 0);
-                        if (nonZeroItems.length === 0) return null;
-                        const formatCurrency = (value: number) =>
-                          new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
-                        return (
-                          <div style={{
-                            ...tooltipStyles.contentStyle,
-                            padding: '6px 8px',
-                            fontSize: '10px',
-                          }}>
-                            <p style={{ ...tooltipStyles.labelStyle, marginBottom: '2px', fontSize: '10px' }}>
-                              {payload[0]?.payload?.week}
-                            </p>
-                            {nonZeroItems.map((item: any, idx: number) => (
-                              <p key={idx} style={{ ...tooltipStyles.itemStyle, margin: '1px 0', fontSize: '9px' }}>
-                                <span style={{ color: item.stroke || item.fill }}>{item.name}</span>: {formatCurrency(item.value)}
-                              </p>
-                            ))}
-                          </div>
-                        );
-                      }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: '9px' }} />
-                    <Bar dataKey="income" name="Income" stackId="financial" fill="#10b981" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="investment" name="Investment" stackId="financial" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                    <Line
-                      type="monotone"
-                      dataKey="spending"
-                      name="Spending"
-                      stroke="#ef4444"
-                      strokeWidth={2}
-                      dot={{ fill: '#ef4444', r: 3 }}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
