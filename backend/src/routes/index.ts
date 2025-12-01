@@ -15,6 +15,7 @@ import mastersPrepRoutes from './masters-prep.routes.js';
 import projectRoutes from './project.routes.js';
 import goalRoutes from './goal.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
+import reportsRoutes from './reports.routes.js';
 import exportRoutes from './export.routes.js';
 import importRoutes from './import.routes.js';
 
@@ -30,6 +31,9 @@ router.use('/auth', authRoutes);
 
 // Dashboard routes
 router.use('/dashboard', dashboardRoutes);
+
+// Reports routes
+router.use('/reports', reportsRoutes);
 
 // Module routes
 router.use('/daily-logs', dailyLogRoutes);

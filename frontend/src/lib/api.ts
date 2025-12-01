@@ -389,6 +389,16 @@ export const api = {
         totals: { imported: number; skipped: number; errors: number };
       }>('/import/json', { data, mode }),
   },
+
+  // Reports endpoints
+  reports: {
+    monthly: (year: number, month: number) =>
+      api.get<unknown>('/reports/monthly', { year, month }),
+    quarterly: (year: number, quarter: number) =>
+      api.get<unknown>('/reports/quarterly', { year, quarter }),
+    yearly: (year: number) =>
+      api.get<unknown>('/reports/yearly', { year }),
+  },
 };
 
 export default api;
