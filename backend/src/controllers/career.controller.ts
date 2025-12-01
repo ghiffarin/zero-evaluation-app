@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
-import { sendSuccess, sendError } from '../utils/response.js';
+import { sendSuccess, sendError, sendCreated } from '../utils/response.js';
 import { createCrudController } from '../services/crud.service.js';
 
 // Career Activities
@@ -82,7 +82,7 @@ export const createActivityLog = async (req: Request, res: Response): Promise<vo
     // The activity's total time is calculated dynamically from all its logs.
     // This ensures the daily log system shows time on the correct date.
 
-    sendSuccess(res, log, 201);
+    sendCreated(res, log, 'Activity log created successfully');
   } catch (error) {
     console.error('Create activity log error:', error);
     sendError(res, 'Failed to create activity log', 500);

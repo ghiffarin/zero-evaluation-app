@@ -35,7 +35,7 @@ type PrismaModelName =
 interface CrudOptions {
   model: PrismaModelName;
   include?: Record<string, boolean | object>;
-  orderBy?: Record<string, 'asc' | 'desc'>;
+  orderBy?: Record<string, 'asc' | 'desc'> | Array<Record<string, 'asc' | 'desc'>>;
   searchFields?: string[];
   dateField?: string;
 }

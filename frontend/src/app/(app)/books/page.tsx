@@ -815,7 +815,7 @@ function BookModal({
               <label className="text-sm font-medium">Status</label>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as Book['status'] })}
                 className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
               >
                 {BOOK_STATUSES.map(({ value, label }) => (

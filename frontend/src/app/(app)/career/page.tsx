@@ -1172,7 +1172,7 @@ function ActivityModal({
       activityType: formData.activityType,
       subcategory: formData.subcategory || undefined,
       targetEntity: formData.targetEntity || undefined,
-      jobApplicationId: formData.jobApplicationId || null,
+      jobApplicationId: formData.jobApplicationId || undefined,
       timeSpentMin: formData.timeSpentMin ? Number(formData.timeSpentMin) : undefined,
       description: formData.description || undefined,
       outputSummary: formData.outputSummary || undefined,

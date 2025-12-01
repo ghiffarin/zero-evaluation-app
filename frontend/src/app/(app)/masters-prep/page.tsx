@@ -1507,8 +1507,8 @@ function PrepItemModal({
       readinessScore: formData.readinessScore ? Number(formData.readinessScore) : undefined,
       nextStep: formData.nextStep || undefined,
       notes: formData.notes || undefined,
-      universityId: formData.universityId || null,
-      scholarshipId: formData.scholarshipId || null,
+      universityId: formData.universityId || undefined,
+      scholarshipId: formData.scholarshipId || undefined,
     });
     setSaving(false);
   };
@@ -2232,7 +2232,7 @@ function ScholarshipModal({
     setSaving(true);
     await onSave({
       name: formData.name,
-      universityId: formData.universityId || null,
+      universityId: formData.universityId || undefined,
       provider: formData.provider || undefined,
       type: formData.type,
       amount: formData.amount || undefined,
