@@ -46,28 +46,28 @@ export const getTodaySummary = async (req: Request, res: Response): Promise<void
       date: today,
       dailyLog: dailyLog
         ? {
-            moodScore: dailyLog.moodScore,
-            energyScore: dailyLog.energyScore,
-            sleepHours: dailyLog.sleepHours,
-            workHours: dailyLog.workHours,
-            learningHours: dailyLog.learningHours,
-          }
+          moodScore: dailyLog.moodScore,
+          energyScore: dailyLog.energyScore,
+          sleepHours: dailyLog.sleepHours,
+          workHours: dailyLog.workHours,
+          learningHours: dailyLog.learningHours,
+        }
         : null,
       wellness: wellness
         ? {
-            sleepHours: wellness.sleepHours,
-            sleepQuality: wellness.sleepQuality,
-            energyLevel: wellness.energyLevel,
-            moodScore: wellness.moodScore,
-            wellnessScore: wellness.wellnessScore,
-          }
+          sleepHours: wellness.sleepHours,
+          sleepQuality: wellness.sleepQuality,
+          energyLevel: wellness.energyLevel,
+          moodScore: wellness.moodScore,
+          wellnessScore: wellness.wellnessScore,
+        }
         : null,
       reflection: reflection
         ? {
-            integrityScore: reflection.integrityScore,
-            disciplineScore: reflection.disciplineScore,
-            emotionalState: reflection.emotionalState,
-          }
+          integrityScore: reflection.integrityScore,
+          disciplineScore: reflection.disciplineScore,
+          emotionalState: reflection.emotionalState,
+        }
         : null,
       activities: {
         workoutSessions: workouts.length,
@@ -246,7 +246,7 @@ export const getMonthlyStats = async (req: Request, res: Response): Promise<void
         averageBand:
           ielts.filter((i) => i.estimatedBand).length > 0
             ? ielts.reduce((sum, i) => sum + (i.estimatedBand || 0), 0) /
-              ielts.filter((i) => i.estimatedBand).length
+            ielts.filter((i) => i.estimatedBand).length
             : null,
       },
       fitness: {
@@ -284,6 +284,7 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
       books,
       mastersPrep,
       career,
+      careerLogs,
       financial,
     ] = await Promise.all([
       prisma.dailyLog.findMany({
@@ -318,6 +319,10 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
         where: { userId },
         orderBy: { date: 'asc' },
       }),
+      prisma.careerActivityLog.findMany({
+        where: { userId },
+        orderBy: { date: 'asc' },
+      }),
       prisma.financialTransaction.findMany({
         where: { userId },
         orderBy: { date: 'asc' },
@@ -337,6 +342,7 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
     books.forEach(b => allDatesWithData.add(formatDate(b.date)));
     mastersPrep.forEach(m => allDatesWithData.add(formatDate(m.date)));
     career.forEach(c => allDatesWithData.add(formatDate(c.date)));
+    careerLogs.forEach(c => allDatesWithData.add(formatDate(c.date)));
     financial.forEach(f => allDatesWithData.add(formatDate(f.date)));
 
     // Sort dates and take only the most recent ones (up to 14 days)
@@ -375,12 +381,14 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
       return map;
     };
 
+    const dailyLogsByDate = groupByDate(dailyLogs);
     const workoutsByDate = groupByDate(workouts);
     const skillsByDate = groupByDate(skills);
     const ieltsByDate = groupByDate(ielts);
     const booksByDate = groupByDate(books);
     const mastersPrepByDate = groupByDate(mastersPrep);
     const careerByDate = groupByDate(career);
+    const careerLogsByDate = groupByDate(careerLogs);
     const financialByDate = groupByDate(financial);
     const wellnessByDate = groupByDate(wellness);
 
@@ -395,6 +403,7 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
     // 1. Time Investment Chart Data - show all days of the week
     const timeInvestmentData = dateRange
       .map(date => {
+        const dayDailyLog = dailyLogsByDate.get(date)?.[0];
         const dayWorkouts = workoutsByDate.get(date) || [];
         const daySkills = skillsByDate.get(date) || [];
         const dayIelts = ieltsByDate.get(date) || [];
@@ -409,7 +418,12 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
           dayBooks.reduce((sum, b) => sum + (b.timeSpentMin || 0), 0) +
           dayMastersPrep.reduce((sum, m) => sum + (m.timeSpentMin || 0), 0)
         ) / 60;
-        const workHours = dayCareer.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60;
+        // Include work hours from DailyLog, Career activities, and Career activity logs
+        const dayCareerLogs = careerLogsByDate.get(date) || [];
+        const careerHours = dayCareer.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60;
+        const careerLogHours = dayCareerLogs.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60;
+        const dailyLogWorkHours = dayDailyLog?.workHours || 0;
+        const workHours = careerHours + careerLogHours + dailyLogWorkHours;
 
         return {
           date,
@@ -523,7 +537,12 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
     const summaryStats = {
       totalLearningHours: Number(((totalIeltsMin + totalSkillsMin + totalBooksMin + totalMastersPrepMin) / 60).toFixed(1)),
       totalWorkoutHours: Number((workouts.reduce((sum, w) => sum + (w.durationMin || 0), 0) / 60).toFixed(1)),
-      totalWorkHours: Number((career.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60).toFixed(1)),
+      // Include work hours from DailyLog, Career activities, and Career activity logs
+      totalWorkHours: Number((
+        career.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60 +
+        careerLogs.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60 +
+        dailyLogs.reduce((sum, d) => sum + (d.workHours || 0), 0)
+      ).toFixed(1)),
       avgWellnessScore: wellness.length > 0
         ? Number((wellness.reduce((sum, w) => sum + (w.wellnessScore || 0), 0) / wellness.length).toFixed(1))
         : null,
