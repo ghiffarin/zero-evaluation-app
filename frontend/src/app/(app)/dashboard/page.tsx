@@ -96,6 +96,7 @@ interface ChartData {
     workout: number;
     learning: number;
     work: number;
+    dayScore: number | null;
   }>;
   wellnessTrend: Array<{
     date: string;
@@ -282,26 +283,38 @@ export default function DashboardPage() {
           <CardContent className="p-2">
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData?.timeInvestment || []} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <ComposedChart data={chartData?.timeInvestment || []} margin={{ top: 5, right: 35, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
                   <XAxis
                     dataKey="displayDate"
                     tick={{ fontSize: 10, fill: chartColors.axisColor }}
                     stroke={chartColors.gridStroke}
                   />
+                  {/* Left Y-axis for hours */}
                   <YAxis
+                    yAxisId="hours"
                     tick={{ fontSize: 10, fill: chartColors.axisColor }}
                     stroke={chartColors.gridStroke}
                     width={30}
+                  />
+                  {/* Right Y-axis for daily score */}
+                  <YAxis
+                    yAxisId="score"
+                    orientation="right"
+                    domain={[0, 10]}
+                    tick={{ fontSize: 10, fill: chartColors.axisColor }}
+                    stroke={chartColors.gridStroke}
+                    width={25}
                   />
                   <Tooltip
                     cursor={false}
                     {...tooltipStyles}
                     content={({ active, payload }) => {
                       if (!active || !payload) return null;
-                      const nonZeroItems = payload.filter((item: any) => item.value > 0);
-                      if (nonZeroItems.length === 0) return null;
-                      const total = nonZeroItems.reduce((sum: number, item: any) => sum + item.value, 0);
+                      const timeItems = payload.filter((item: any) => item.dataKey !== 'dayScore' && item.value > 0);
+                      const scoreItem = payload.find((item: any) => item.dataKey === 'dayScore');
+                      if (timeItems.length === 0 && !scoreItem?.value) return null;
+                      const total = timeItems.reduce((sum: number, item: any) => sum + item.value, 0);
                       return (
                         <div style={{
                           ...tooltipStyles.contentStyle,
@@ -309,22 +322,42 @@ export default function DashboardPage() {
                           fontSize: '10px',
                         }}>
                           <p style={{ ...tooltipStyles.labelStyle, marginBottom: '2px', fontSize: '10px' }}>
-                            {payload[0]?.payload?.displayDate} - {total.toFixed(1)}h
+                            {payload[0]?.payload?.displayDate}
                           </p>
-                          {nonZeroItems.map((item: any, idx: number) => (
+                          {timeItems.length > 0 && (
+                            <p style={{ ...tooltipStyles.itemStyle, margin: '1px 0', fontSize: '9px', fontWeight: 600 }}>
+                              Total: {total.toFixed(1)}h
+                            </p>
+                          )}
+                          {timeItems.map((item: any, idx: number) => (
                             <p key={idx} style={{ ...tooltipStyles.itemStyle, margin: '1px 0', fontSize: '9px' }}>
                               <span style={{ color: item.fill }}>{item.name}</span>: {item.value.toFixed(1)}h
                             </p>
                           ))}
+                          {scoreItem?.value && (
+                            <p style={{ ...tooltipStyles.itemStyle, margin: '1px 0', fontSize: '9px', marginTop: '3px', paddingTop: '3px', borderTop: `1px solid ${isDark ? 'hsl(0 0% 25%)' : 'hsl(220 10% 88%)'}` }}>
+                              <span style={{ color: scoreItem.stroke }}>Daily Score</span>: {scoreItem.value}/10
+                            </p>
+                          )}
                         </div>
                       );
                     }}
                   />
                   <Legend wrapperStyle={{ fontSize: '10px' }} />
-                  <Bar dataKey="workout" name="Workout" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="learning" name="Learning" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="work" name="Work" stackId="a" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                  <Bar yAxisId="hours" dataKey="workout" name="Workout" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
+                  <Bar yAxisId="hours" dataKey="learning" name="Learning" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+                  <Bar yAxisId="hours" dataKey="work" name="Work" stackId="a" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  <Line
+                    yAxisId="score"
+                    type="monotone"
+                    dataKey="dayScore"
+                    name="Daily Score"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
+                    dot={{ fill: '#f59e0b', r: 2.5 }}
+                    connectNulls
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </CardContent>

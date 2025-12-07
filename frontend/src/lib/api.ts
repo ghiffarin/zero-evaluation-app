@@ -235,6 +235,7 @@ export const api = {
     get: (id: string) => api.get<unknown>(`/wellness/${id}`),
     create: (data: unknown) => api.post<unknown>('/wellness', data),
     update: (id: string, data: unknown) => api.put<unknown>(`/wellness/${id}`, data),
+    upsertByDate: (date: string, data: unknown) => api.put<unknown>(`/wellness/date/${date}`, data),
     delete: (id: string) => api.delete<unknown>(`/wellness/${id}`),
     stats: () => api.get<unknown>('/wellness/stats'),
   },

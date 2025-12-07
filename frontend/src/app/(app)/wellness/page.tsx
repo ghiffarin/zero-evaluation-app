@@ -252,8 +252,21 @@ export default function WellnessPage() {
   // CRUD handlers
   const handleCreate = async (data: Partial<WellnessEntry>) => {
     try {
-      const res = await api.wellness.create(data);
-      setEntries((prev) => [(res as any).data, ...prev]);
+      // Use upsert to avoid duplicate entry errors
+      const dateStr = data.date ? new Date(data.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      const res = await api.wellness.upsertByDate(dateStr, data);
+
+      // Update or add the entry in the list
+      setEntries((prev) => {
+        const existingIndex = prev.findIndex(e => e.date.split('T')[0] === dateStr);
+        if (existingIndex >= 0) {
+          const updated = [...prev];
+          updated[existingIndex] = (res as any).data;
+          return updated;
+        }
+        return [(res as any).data, ...prev];
+      });
+
       setShowModal(false);
       const statsRes = await api.wellness.stats();
       setStats((statsRes as any).data);
@@ -331,22 +344,20 @@ export default function WellnessPage() {
         <div className="inline-flex rounded-lg border p-1 bg-muted/30">
           <button
             onClick={() => setViewMode('analytics')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'analytics'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'analytics'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+              }`}
           >
             <BarChart3 className="h-4 w-4" />
             Analytics
           </button>
           <button
             onClick={() => setViewMode('log')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'log'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'log'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+              }`}
           >
             <List className="h-4 w-4" />
             Log
@@ -438,7 +449,7 @@ export default function WellnessPage() {
                       >
                         <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} vertical={false} />
                         <XAxis dataKey="displayDate" stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} />
-                        <YAxis domain={[0, 5]} stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} width={20} />
+                        <YAxis domain={[0, 6]} ticks={[0, 1, 2, 3, 4, 5, 6]} stroke={chartColors.axisColor} fontSize={10} tickLine={false} axisLine={false} width={20} />
                         <Tooltip
                           cursor={false}
                           {...tooltipStyles}
@@ -938,11 +949,10 @@ function WellnessModal({
               key={key}
               type="button"
               onClick={() => setActiveTab(key as typeof activeTab)}
-              className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === key
-                  ? 'border-b-2 border-primary text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+              className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${activeTab === key
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+                }`}
             >
               {label}
             </button>

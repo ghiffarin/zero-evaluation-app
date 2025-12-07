@@ -431,6 +431,7 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
           workout: Number(workoutHours.toFixed(2)),
           learning: Number(learningHours.toFixed(2)),
           work: Number(workHours.toFixed(2)),
+          dayScore: dayDailyLog?.dayScore || null,
         };
       });
 
