@@ -13,6 +13,8 @@ import {
   Loader2,
   Flame,
   Brain,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { api } from '@/lib/api';
@@ -160,6 +162,9 @@ export default function DashboardPage() {
   const [goals, setGoals] = React.useState<Goal[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [dateOffset, setDateOffset] = React.useState(0);
+  const [hasNext, setHasNext] = React.useState(false);
+  const [hasPrevious, setHasPrevious] = React.useState(false);
 
   React.useEffect(() => {
     if (authLoading || !isAuthenticated) {
@@ -173,12 +178,15 @@ export default function DashboardPage() {
 
         const [todayRes, chartsRes, goalsRes] = await Promise.all([
           api.dashboard.today(),
-          api.dashboard.charts(14),
+          api.dashboard.charts(14, dateOffset),
           api.goals.list({ limit: 6, status: 'in_progress' }),
         ]);
 
         setTodaySummary(todayRes.data as TodaySummary);
-        setChartData(chartsRes.data as ChartData);
+        const chartResponse = chartsRes.data as any;
+        setChartData(chartResponse);
+        setHasNext(chartResponse.pagination?.hasNext || false);
+        setHasPrevious(chartResponse.pagination?.hasPrevious || false);
         setGoals((goalsRes as any).data || []);
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -189,7 +197,23 @@ export default function DashboardPage() {
     }
 
     fetchDashboardData();
-  }, [authLoading, isAuthenticated]);
+  }, [authLoading, isAuthenticated, dateOffset]);
+
+  // Memoize chart data to prevent unnecessary re-renders
+  const memoizedTimeInvestment = React.useMemo(
+    () => chartData?.timeInvestment || [],
+    [chartData?.timeInvestment]
+  );
+
+  const memoizedWellnessTrend = React.useMemo(
+    () => chartData?.wellnessTrend || [],
+    [chartData?.wellnessTrend]
+  );
+
+  const memoizedLearningBreakdown = React.useMemo(
+    () => chartData?.learningBreakdown || [],
+    [chartData?.learningBreakdown]
+  );
 
   if (loading) {
     return (
@@ -232,7 +256,34 @@ export default function DashboardPage() {
       />
 
       {/* Summary Stats */}
-      <PageSection title="Overview (Last 14 Days)">
+      <PageSection
+        title="Overview (Last 14 Days)"
+        actions={
+          <div className="flex items-center gap-2">
+            {chartData?.period.start && chartData?.period.end && (
+              <span className="text-sm font-normal text-muted-foreground">
+                {formatDate(new Date(chartData.period.start), { month: 'short', day: 'numeric' })} - {formatDate(new Date(chartData.period.end), { month: 'short', day: 'numeric' })}
+              </span>
+            )}
+            <button
+              onClick={() => setDateOffset(dateOffset + 1)}
+              disabled={!hasPrevious}
+              className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Previous period"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setDateOffset(Math.max(0, dateOffset - 1))}
+              disabled={!hasNext || dateOffset === 0}
+              className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Next period"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        }
+      >
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
           <SummaryCard
             icon={<Brain className="h-5 w-5" />}
@@ -283,7 +334,7 @@ export default function DashboardPage() {
           <CardContent className="p-2">
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData?.timeInvestment || []} margin={{ top: 5, right: 35, left: 0, bottom: 5 }}>
+                <ComposedChart data={memoizedTimeInvestment} margin={{ top: 5, right: 35, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
                   <XAxis
                     dataKey="displayDate"
@@ -373,7 +424,7 @@ export default function DashboardPage() {
             <CardContent className="p-2">
               <div className="h-[180px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData?.wellnessTrend || []} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <LineChart data={memoizedWellnessTrend} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
                     <XAxis
                       dataKey="displayDate"

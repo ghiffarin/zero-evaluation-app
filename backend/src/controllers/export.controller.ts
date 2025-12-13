@@ -18,10 +18,13 @@ const EXPORT_TABLES = {
   financialTransactions: { model: 'financialTransaction', name: 'financial_transactions' },
   reflectionEntries: { model: 'reflectionEntry', name: 'reflection_entries' },
   careerActivities: { model: 'careerActivity', name: 'career_activities' },
+  careerActivityLogs: { model: 'careerActivityLog', name: 'career_activity_logs' },
   jobApplications: { model: 'jobApplication', name: 'job_applications' },
   mastersPrepItems: { model: 'mastersPrepItem', name: 'masters_prep_items' },
   mastersPrepSessions: { model: 'mastersPrepSession', name: 'masters_prep_sessions' },
   mastersPrepNotes: { model: 'mastersPrepNote', name: 'masters_prep_notes' },
+  universities: { model: 'university', name: 'universities' },
+  scholarships: { model: 'scholarship', name: 'scholarships' },
   projects: { model: 'project', name: 'projects' },
   goals: { model: 'goal', name: 'goals' },
   goalProgress: { model: 'goalProgress', name: 'goal_progress' },
@@ -127,6 +130,21 @@ async function fetchUserData(userId: string) {
     data.tagLinks = [];
   }
 
+  // Fetch career activity logs through career activities
+  const careerActivityIds = data.careerActivities.map((a: any) => a.id);
+  if (careerActivityIds.length > 0) {
+    data.careerActivityLogs = await prisma.careerActivityLog.findMany({
+      where: { activityId: { in: careerActivityIds } },
+      orderBy: { date: 'desc' }
+    });
+  } else {
+    data.careerActivityLogs = [];
+  }
+
+  // Fetch universities and scholarships
+  data.universities = await prisma.university.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
+  data.scholarships = await prisma.scholarship.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
+
   return data;
 }
 
@@ -149,10 +167,13 @@ export const getExportSummary = async (req: Request, res: Response): Promise<voi
     counts.financialTransactions = await prisma.financialTransaction.count({ where: { userId } });
     counts.reflectionEntries = await prisma.reflectionEntry.count({ where: { userId } });
     counts.careerActivities = await prisma.careerActivity.count({ where: { userId } });
+    counts.careerActivityLogs = await prisma.careerActivityLog.count({ where: { userId } });
     counts.jobApplications = await prisma.jobApplication.count({ where: { userId } });
     counts.mastersPrepItems = await prisma.mastersPrepItem.count({ where: { userId } });
     counts.mastersPrepSessions = await prisma.mastersPrepSession.count({ where: { userId } });
     counts.mastersPrepNotes = await prisma.mastersPrepNote.count({ where: { userId } });
+    counts.universities = await prisma.university.count({ where: { userId } });
+    counts.scholarships = await prisma.scholarship.count({ where: { userId } });
     counts.projects = await prisma.project.count({ where: { userId } });
     counts.goals = await prisma.goal.count({ where: { userId } });
     counts.goalProgress = await prisma.goalProgress.count({ where: { userId } });

@@ -138,7 +138,13 @@ export const api = {
     weekly: () => request<ApiResponse<unknown>>('/dashboard/weekly'),
     monthly: () => request<ApiResponse<unknown>>('/dashboard/monthly'),
     insights: () => request<ApiResponse<unknown>>('/dashboard/insights'),
-    charts: (days?: number) => request<ApiResponse<unknown>>('/dashboard/charts', { params: days ? { days } : undefined }),
+    charts: (days?: number, offset: number = 0) =>
+      request<ApiResponse<unknown>>('/dashboard/charts', {
+        params: {
+          ...(days ? { days } : {}),
+          offset
+        }
+      }),
   },
 
   // Daily logs endpoints

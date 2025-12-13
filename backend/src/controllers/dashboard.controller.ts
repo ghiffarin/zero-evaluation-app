@@ -273,8 +273,17 @@ export const getMonthlyStats = async (req: Request, res: Response): Promise<void
 export const getChartData = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;
+    const offset = parseInt((req.query.offset as string) || '0');
 
-    // Fetch ALL user data (no date filter) to show only dates with actual data
+    // Calculate date range to limit data fetched (max 100 days)
+    const maxDaysToFetch = 100;
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999); // End of today
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - maxDaysToFetch);
+    startDate.setHours(0, 0, 0, 0); // Start of day
+
+    // Fetch data with date filtering for better performance
     const [
       dailyLogs,
       wellness,
@@ -288,43 +297,73 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
       financial,
     ] = await Promise.all([
       prisma.dailyLog.findMany({
-        where: { userId },
+        where: {
+          userId,
+          date: { gte: startDate, lte: endDate }
+        },
         orderBy: { date: 'asc' },
       }),
       prisma.wellnessEntry.findMany({
-        where: { userId },
+        where: {
+          userId,
+          date: { gte: startDate, lte: endDate }
+        },
         orderBy: { date: 'asc' },
       }),
       prisma.workoutSession.findMany({
-        where: { userId },
+        where: {
+          userId,
+          date: { gte: startDate, lte: endDate }
+        },
         orderBy: { date: 'asc' },
       }),
       prisma.skillSession.findMany({
-        where: { userId },
+        where: {
+          userId,
+          date: { gte: startDate, lte: endDate }
+        },
         orderBy: { date: 'asc' },
       }),
       prisma.ieltsSession.findMany({
-        where: { userId },
+        where: {
+          userId,
+          date: { gte: startDate, lte: endDate }
+        },
         orderBy: { date: 'asc' },
       }),
       prisma.bookReadingSession.findMany({
-        where: { userId },
+        where: {
+          userId,
+          date: { gte: startDate, lte: endDate }
+        },
         orderBy: { date: 'asc' },
       }),
       prisma.mastersPrepSession.findMany({
-        where: { userId },
+        where: {
+          userId,
+          date: { gte: startDate, lte: endDate }
+        },
         orderBy: { date: 'asc' },
       }),
       prisma.careerActivity.findMany({
-        where: { userId },
+        where: {
+          userId,
+          date: { gte: startDate, lte: endDate }
+        },
         orderBy: { date: 'asc' },
       }),
       prisma.careerActivityLog.findMany({
-        where: { userId },
+        where: {
+          userId,
+          date: { gte: startDate, lte: endDate }
+        },
         orderBy: { date: 'asc' },
       }),
       prisma.financialTransaction.findMany({
-        where: { userId },
+        where: {
+          userId,
+          date: { gte: startDate, lte: endDate }
+        },
         orderBy: { date: 'asc' },
       }),
     ]);
@@ -345,9 +384,15 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
     careerLogs.forEach(c => allDatesWithData.add(formatDate(c.date)));
     financial.forEach(f => allDatesWithData.add(formatDate(f.date)));
 
-    // Sort dates and take only the most recent ones (up to 14 days)
+    // Sort dates and apply offset-based pagination
     const sortedDates = Array.from(allDatesWithData).sort();
-    const dateRange = sortedDates.slice(-14); // Last 14 dates with data
+    const endIndex = sortedDates.length - (offset * 14);
+    const startIndex = Math.max(0, endIndex - 14);
+    const dateRange = sortedDates.slice(startIndex, endIndex);
+
+    // Calculate pagination metadata
+    const hasPrevious = startIndex > 0; // Can go to older data if there are dates before startIndex
+    const hasNext = offset > 0; // Can go to newer data if we're not at offset 0
 
     // If no data at all, return empty response
     if (dateRange.length === 0) {
@@ -551,17 +596,22 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
       streakDays: calculateStreak(dateRange, dateRange), // All dates in range have data
     };
 
-    const startDate = dateRange.length > 0 ? new Date(dateRange[0]) : null;
-    const endDate = dateRange.length > 0 ? new Date(dateRange[dateRange.length - 1]) : null;
+    const periodStartDate = dateRange.length > 0 ? new Date(dateRange[0]) : null;
+    const periodEndDate = dateRange.length > 0 ? new Date(dateRange[dateRange.length - 1]) : null;
 
     sendSuccess(res, {
-      period: { start: startDate, end: endDate, days: dateRange.length },
+      period: { start: periodStartDate, end: periodEndDate, days: dateRange.length },
       timeInvestment: timeInvestmentData,
       wellnessTrend: wellnessTrendData,
       learningBreakdown: learningBreakdownData,
       financialFlow: weeklyFinancialData,
       activityHeatmap: activityHeatmapData,
       summary: summaryStats,
+      pagination: {
+        hasNext,
+        hasPrevious,
+        currentOffset: offset,
+      },
     });
   } catch (error) {
     console.error('Get chart data error:', error);

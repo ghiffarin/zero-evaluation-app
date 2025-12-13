@@ -21,7 +21,10 @@ const IMPORT_ORDER = [
   'financialTransactions',
   'reflectionEntries',
   'careerActivities',
+  'careerActivityLogs',
   'jobApplications',
+  'universities',
+  'scholarships',
   'mastersPrepItems',
   'mastersPrepSessions',
   'mastersPrepNotes',
@@ -56,8 +59,10 @@ function prepareRecord(record: Record<string, unknown>, userId: string, idMappin
 
     // Handle foreign key references that need remapping
     if (key === 'projectId' || key === 'goalId' || key === 'bookId' ||
-        key === 'ieltsSessionId' || key === 'workoutSessionId' ||
-        key === 'prepItemId' || key === 'tagId' || key === 'relatedGoalId') {
+      key === 'ieltsSessionId' || key === 'workoutSessionId' ||
+      key === 'prepItemId' || key === 'tagId' || key === 'relatedGoalId' ||
+      key === 'activityId' || key === 'jobApplicationId' ||
+      key === 'universityId' || key === 'scholarshipId') {
       if (value && typeof value === 'string') {
         const newId = idMapping.get(value);
         prepared[key] = newId || null;
@@ -69,7 +74,7 @@ function prepareRecord(record: Record<string, unknown>, userId: string, idMappin
 
     // Handle dates
     if (key === 'date' || key === 'createdAt' || key === 'updatedAt' ||
-        key === 'dueDate' || key === 'appliedDate' || key === 'expectedResponse') {
+      key === 'dueDate' || key === 'appliedDate' || key === 'expectedResponse') {
       prepared[key] = parseDate(value);
       continue;
     }
@@ -143,7 +148,10 @@ export const importJSON = async (req: Request, res: Response): Promise<void> => 
       await prisma.mastersPrepNote.deleteMany({ where: { userId } });
       await prisma.mastersPrepSession.deleteMany({ where: { userId } });
       await prisma.mastersPrepItem.deleteMany({ where: { userId } });
+      await prisma.scholarship.deleteMany({ where: { userId } });
+      await prisma.university.deleteMany({ where: { userId } });
       await prisma.jobApplication.deleteMany({ where: { userId } });
+      await prisma.careerActivityLog.deleteMany({ where: { userId } });
       await prisma.careerActivity.deleteMany({ where: { userId } });
       await prisma.reflectionEntry.deleteMany({ where: { userId } });
       await prisma.financialTransaction.deleteMany({ where: { userId } });
@@ -279,8 +287,21 @@ export const importJSON = async (req: Request, res: Response): Promise<void> => 
             case 'careerActivities':
               created = await prisma.careerActivity.create({ data: preparedData as any });
               break;
+            case 'careerActivityLogs':
+              if (!preparedData.activityId) {
+                results[tableKey].skipped++;
+                continue;
+              }
+              created = await prisma.careerActivityLog.create({ data: preparedData as any });
+              break;
             case 'jobApplications':
               created = await prisma.jobApplication.create({ data: preparedData as any });
+              break;
+            case 'universities':
+              created = await prisma.university.create({ data: preparedData as any });
+              break;
+            case 'scholarships':
+              created = await prisma.scholarship.create({ data: preparedData as any });
               break;
             case 'mastersPrepItems':
               created = await prisma.mastersPrepItem.create({ data: preparedData as any });

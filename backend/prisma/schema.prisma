@@ -198,6 +198,7 @@ model DailyLog {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
+  @@index([userId, date])
   @@map("daily_logs")
 }
 
@@ -228,6 +229,7 @@ model IeltsSession {
   mistakes IeltsMistake[]
   vocab    IeltsVocab[]
 
+  @@index([userId, date])
   @@map("ielts_sessions")
 }
 
@@ -396,6 +398,7 @@ model BookReadingSession {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
+  @@index([userId, date])
   @@map("book_reading_sessions")
 }
 
@@ -435,6 +438,7 @@ model SkillSession {
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
+  @@index([userId, date])
   @@map("skill_sessions")
 }
 
@@ -510,6 +514,7 @@ model WorkoutSession {
   user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   sets WorkoutSet[]
 
+  @@index([userId, date])
   @@map("workout_sessions")
 }
 
@@ -598,6 +603,7 @@ model WellnessEntry {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
+  @@index([userId, date])
   @@map("wellness_entries")
 }
 
@@ -622,6 +628,7 @@ model FinancialTransaction {
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, date])
   @@map("financial_transactions")
 }
 
@@ -729,6 +736,7 @@ model CareerActivity {
   jobApplication JobApplication? @relation(fields: [jobApplicationId], references: [id], onDelete: SetNull)
   logs           CareerActivityLog[]
 
+  @@index([userId, date])
   @@map("career_activities")
 }
 
@@ -748,6 +756,7 @@ model CareerActivityLog {
   user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   activity CareerActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
 
+  @@index([userId, date])
   @@map("career_activity_logs")
 }
 
