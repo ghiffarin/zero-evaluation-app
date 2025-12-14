@@ -537,10 +537,22 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
       });
 
     // 3. Learning Breakdown Data (daily stacked bar chart - dates on X-axis, hours on Y-axis)
-    const totalIeltsMin = ielts.reduce((sum, i) => sum + (i.timeSpentMin || 0), 0);
-    const totalSkillsMin = skills.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0);
-    const totalBooksMin = books.reduce((sum, b) => sum + (b.timeSpentMin || 0), 0);
-    const totalMastersPrepMin = mastersPrep.reduce((sum, m) => sum + (m.timeSpentMin || 0), 0);
+    // Filter data to only include items within the dateRange
+    const dateRangeSet = new Set(dateRange);
+    const filteredIelts = ielts.filter(i => dateRangeSet.has(formatDate(i.date)));
+    const filteredSkills = skills.filter(s => dateRangeSet.has(formatDate(s.date)));
+    const filteredBooks = books.filter(b => dateRangeSet.has(formatDate(b.date)));
+    const filteredMastersPrep = mastersPrep.filter(m => dateRangeSet.has(formatDate(m.date)));
+    const filteredWorkouts = workouts.filter(w => dateRangeSet.has(formatDate(w.date)));
+    const filteredCareer = career.filter(c => dateRangeSet.has(formatDate(c.date)));
+    const filteredCareerLogs = careerLogs.filter(c => dateRangeSet.has(formatDate(c.date)));
+    const filteredDailyLogs = dailyLogs.filter(d => dateRangeSet.has(formatDate(d.date)));
+    const filteredWellness = wellness.filter(w => dateRangeSet.has(formatDate(w.date)));
+
+    const totalIeltsMin = filteredIelts.reduce((sum, i) => sum + (i.timeSpentMin || 0), 0);
+    const totalSkillsMin = filteredSkills.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0);
+    const totalBooksMin = filteredBooks.reduce((sum, b) => sum + (b.timeSpentMin || 0), 0);
+    const totalMastersPrepMin = filteredMastersPrep.reduce((sum, m) => sum + (m.timeSpentMin || 0), 0);
 
     const learningBreakdownData = dateRange
       .map(date => {
@@ -620,18 +632,18 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
       };
     });
 
-    // 6. Summary Stats
+    // 6. Summary Stats - use filtered data within the dateRange
     const summaryStats = {
       totalLearningHours: Number(((totalIeltsMin + totalSkillsMin + totalBooksMin + totalMastersPrepMin) / 60).toFixed(1)),
-      totalWorkoutHours: Number((workouts.reduce((sum, w) => sum + (w.durationMin || 0), 0) / 60).toFixed(1)),
+      totalWorkoutHours: Number((filteredWorkouts.reduce((sum, w) => sum + (w.durationMin || 0), 0) / 60).toFixed(1)),
       // Include work hours from DailyLog, Career activities, and Career activity logs
       totalWorkHours: Number((
-        career.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60 +
-        careerLogs.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60 +
-        dailyLogs.reduce((sum, d) => sum + (d.workHours || 0), 0)
+        filteredCareer.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60 +
+        filteredCareerLogs.reduce((sum, c) => sum + (c.timeSpentMin || 0), 0) / 60 +
+        filteredDailyLogs.reduce((sum, d) => sum + (d.workHours || 0), 0)
       ).toFixed(1)),
-      avgWellnessScore: wellness.length > 0
-        ? Number((wellness.reduce((sum, w) => sum + (w.wellnessScore || 0), 0) / wellness.length).toFixed(1))
+      avgWellnessScore: filteredWellness.length > 0
+        ? Number((filteredWellness.reduce((sum, w) => sum + (w.wellnessScore || 0), 0) / filteredWellness.length).toFixed(1))
         : null,
       daysTracked: dateRange.length,
       streakDays: calculateStreak(dateRange, dateRange), // All dates in range have data
