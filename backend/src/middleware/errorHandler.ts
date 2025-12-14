@@ -23,6 +23,11 @@ export const errorHandler = (
 ): void => {
   console.error('Error:', err);
 
+  // Ensure response hasn't been sent yet
+  if (res.headersSent) {
+    return;
+  }
+
   // Custom App Error
   if (err instanceof AppError) {
     sendError(res, err.message, err.statusCode);
@@ -42,13 +47,23 @@ export const errorHandler = (
         sendError(res, 'Foreign key constraint failed', 400);
         return;
       default:
-        sendError(res, 'Database error', 500);
+        sendError(res, 'Database error occurred', 500);
         return;
     }
   }
 
   if (err instanceof Prisma.PrismaClientValidationError) {
     sendError(res, 'Invalid data provided', 400);
+    return;
+  }
+
+  if (err instanceof Prisma.PrismaClientInitializationError) {
+    sendError(res, 'Database connection failed. Please check your database configuration.', 500);
+    return;
+  }
+
+  if (err instanceof Prisma.PrismaClientRustPanicError) {
+    sendError(res, 'Database engine error. Please try again.', 500);
     return;
   }
 
@@ -69,11 +84,11 @@ export const errorHandler = (
     return;
   }
 
-  // Default Error
+  // Default Error - Always return JSON
   const isDev = process.env.NODE_ENV === 'development';
   sendError(
     res,
-    isDev ? err.message : 'Internal server error',
+    isDev ? err.message || 'Internal server error' : 'Internal server error',
     500
   );
 };

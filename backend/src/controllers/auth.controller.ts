@@ -64,6 +64,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
 
+    // Validate input
+    if (!email || !password) {
+      sendError(res, 'Email and password are required', 400);
+      return;
+    }
+
     // Find user
     const user = await prisma.user.findUnique({
       where: { email },
@@ -96,7 +102,17 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }, 'Login successful');
   } catch (error) {
     console.error('Login error:', error);
-    sendError(res, 'Login failed', 500);
+
+    // Check if it's a Prisma connection error
+    if (error && typeof error === 'object' && 'code' in error) {
+      const prismaError = error as { code?: string };
+      if (prismaError.code === 'P1001' || prismaError.code === 'P1002' || prismaError.code === 'P1003') {
+        sendError(res, 'Database connection failed. Please ensure the database is running.', 500);
+        return;
+      }
+    }
+
+    sendError(res, 'Login failed. Please try again.', 500);
   }
 };
 
