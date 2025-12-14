@@ -132,7 +132,7 @@ export default function ExportPage() {
 
     try {
       const token = getAuthToken();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api';
       const url = `${baseUrl}/export/${format}`;
 
       const response = await fetch(url, {
