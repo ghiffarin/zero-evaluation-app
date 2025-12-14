@@ -145,6 +145,13 @@ export const api = {
           offset
         }
       }),
+    chartsCustom: (startDate: string, endDate: string) =>
+      request<ApiResponse<unknown>>('/dashboard/charts', {
+        params: {
+          startDate,
+          endDate
+        }
+      }),
   },
 
   // Daily logs endpoints

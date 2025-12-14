@@ -15,6 +15,8 @@ import {
   Brain,
   ChevronLeft,
   ChevronRight,
+  Calendar,
+  X,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { api } from '@/lib/api';
@@ -165,6 +167,10 @@ export default function DashboardPage() {
   const [dateOffset, setDateOffset] = React.useState(0);
   const [hasNext, setHasNext] = React.useState(false);
   const [hasPrevious, setHasPrevious] = React.useState(false);
+  const [period, setPeriod] = React.useState<7 | 14 | 30>(14);
+  const [useCustomRange, setUseCustomRange] = React.useState(false);
+  const [customStartDate, setCustomStartDate] = React.useState('');
+  const [customEndDate, setCustomEndDate] = React.useState('');
 
   React.useEffect(() => {
     if (authLoading || !isAuthenticated) {
@@ -176,9 +182,13 @@ export default function DashboardPage() {
         setLoading(true);
         setError(null);
 
+        console.log('Fetching dashboard data with period:', period, 'offset:', dateOffset, 'custom range:', useCustomRange);
+
         const [todayRes, chartsRes, goalsRes] = await Promise.all([
           api.dashboard.today(),
-          api.dashboard.charts(14, dateOffset),
+          useCustomRange && customStartDate && customEndDate
+            ? api.dashboard.chartsCustom(customStartDate, customEndDate)
+            : api.dashboard.charts(period, dateOffset),
           api.goals.list({ limit: 6, status: 'in_progress' }),
         ]);
 
@@ -197,7 +207,7 @@ export default function DashboardPage() {
     }
 
     fetchDashboardData();
-  }, [authLoading, isAuthenticated, dateOffset]);
+  }, [authLoading, isAuthenticated, dateOffset, period, useCustomRange, customStartDate, customEndDate]);
 
   // Memoize chart data to prevent unnecessary re-renders
   const memoizedTimeInvestment = React.useMemo(
@@ -257,30 +267,107 @@ export default function DashboardPage() {
 
       {/* Summary Stats */}
       <PageSection
-        title="Overview (Last 14 Days)"
+        title={useCustomRange ? 'Overview (Custom Range)' : `Overview (Last ${period} Days)`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4 flex-wrap">
+            {/* Period Toggle */}
+            {!useCustomRange && (
+              <div className="flex items-center gap-1 bg-muted rounded-md p-1">
+                {[7, 14, 30].map((days) => (
+                  <button
+                    key={days}
+                    onClick={() => {
+                      setPeriod(days as 7 | 14 | 30);
+                      setDateOffset(0); // Reset offset when changing period
+                    }}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                      period === days
+                        ? 'bg-background shadow-sm'
+                        : 'hover:bg-background/50'
+                    }`}
+                  >
+                    {days}d
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Custom Date Range Picker */}
+            {useCustomRange ? (
+              <div className="flex items-center gap-2 bg-muted rounded-md p-1">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-2 py-1 text-xs rounded bg-background border-0 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <span className="text-xs text-muted-foreground">to</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-2 py-1 text-xs rounded bg-background border-0 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <button
+                  onClick={() => {
+                    setUseCustomRange(false);
+                    setCustomStartDate('');
+                    setCustomEndDate('');
+                    setDateOffset(0);
+                  }}
+                  className="p-1 rounded hover:bg-background/50"
+                  title="Clear custom range"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setUseCustomRange(true);
+                  // Set default to last 14 days
+                  const end = new Date();
+                  const start = new Date();
+                  start.setDate(start.getDate() - 13);
+                  setCustomEndDate(end.toISOString().split('T')[0]);
+                  setCustomStartDate(start.toISOString().split('T')[0]);
+                }}
+                className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-muted hover:bg-accent transition-colors"
+                title="Custom date range"
+              >
+                <Calendar className="h-3 w-3" />
+                <span>Custom</span>
+              </button>
+            )}
+
+            {/* Date Range Display */}
             {chartData?.period.start && chartData?.period.end && (
               <span className="text-sm font-normal text-muted-foreground">
                 {formatDate(new Date(chartData.period.start), { month: 'short', day: 'numeric' })} - {formatDate(new Date(chartData.period.end), { month: 'short', day: 'numeric' })}
               </span>
             )}
-            <button
-              onClick={() => setDateOffset(dateOffset + 1)}
-              disabled={!hasPrevious}
-              className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Previous period"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setDateOffset(Math.max(0, dateOffset - 1))}
-              disabled={!hasNext || dateOffset === 0}
-              className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Next period"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+
+            {/* Navigation - only show when not using custom range */}
+            {!useCustomRange && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setDateOffset(dateOffset + 1)}
+                  disabled={!hasPrevious}
+                  className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Previous period"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setDateOffset(Math.max(0, dateOffset - 1))}
+                  disabled={!hasNext || dateOffset === 0}
+                  className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Next period"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </div>
         }
       >

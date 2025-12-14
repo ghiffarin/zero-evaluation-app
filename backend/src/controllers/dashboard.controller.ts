@@ -274,14 +274,40 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
   try {
     const userId = req.user!.id;
     const offset = parseInt((req.query.offset as string) || '0');
+    const days = parseInt((req.query.days as string) || '14');
+    const customStartDate = req.query.startDate as string | undefined;
+    const customEndDate = req.query.endDate as string | undefined;
 
-    // Calculate date range to limit data fetched (max 100 days)
-    const maxDaysToFetch = 100;
-    const endDate = new Date();
-    endDate.setHours(23, 59, 59, 999); // End of today
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - maxDaysToFetch);
-    startDate.setHours(0, 0, 0, 0); // Start of day
+    // Check if custom date range is provided
+    const useCustomRange = customStartDate && customEndDate;
+
+    // Validate days parameter (must be 7, 14, or 30)
+    const validDays = [7, 14, 30].includes(days) ? days : 14;
+
+    // Calculate date range to limit data fetched
+    let maxDaysToFetch = 100;
+    let endDate = new Date();
+    let startDate = new Date();
+
+    if (useCustomRange) {
+      // Use custom date range
+      startDate = new Date(customStartDate);
+      endDate = new Date(customEndDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+
+      // Calculate days in custom range for validation (max 365 days)
+      const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysDiff > 365 || daysDiff < 1) {
+        sendError(res, 'Date range must be between 1 and 365 days', 400);
+        return;
+      }
+    } else {
+      // Use standard pagination with offset
+      endDate.setHours(23, 59, 59, 999); // End of today
+      startDate.setDate(startDate.getDate() - maxDaysToFetch);
+      startDate.setHours(0, 0, 0, 0); // Start of day
+    }
 
     // Fetch data with date filtering for better performance
     const [
@@ -384,15 +410,30 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
     careerLogs.forEach(c => allDatesWithData.add(formatDate(c.date)));
     financial.forEach(f => allDatesWithData.add(formatDate(f.date)));
 
-    // Sort dates and apply offset-based pagination
+    // Sort dates and apply either custom range or offset-based pagination
     const sortedDates = Array.from(allDatesWithData).sort();
-    const endIndex = sortedDates.length - (offset * 14);
-    const startIndex = Math.max(0, endIndex - 14);
-    const dateRange = sortedDates.slice(startIndex, endIndex);
+    let dateRange: string[];
+    let hasPrevious = false;
+    let hasNext = false;
 
-    // Calculate pagination metadata
-    const hasPrevious = startIndex > 0; // Can go to older data if there are dates before startIndex
-    const hasNext = offset > 0; // Can go to newer data if we're not at offset 0
+    if (useCustomRange) {
+      // For custom range, include all dates within the specified range
+      const customStartStr = formatDate(startDate);
+      const customEndStr = formatDate(endDate);
+      dateRange = sortedDates.filter(date => date >= customStartStr && date <= customEndStr);
+      // No pagination for custom ranges
+      hasPrevious = false;
+      hasNext = false;
+    } else {
+      // Use offset-based pagination with the days parameter
+      const endIndex = sortedDates.length - (offset * validDays);
+      const startIndex = Math.max(0, endIndex - validDays);
+      dateRange = sortedDates.slice(startIndex, endIndex);
+
+      // Calculate pagination metadata
+      hasPrevious = startIndex > 0; // Can go to older data if there are dates before startIndex
+      hasNext = offset > 0; // Can go to newer data if we're not at offset 0
+    }
 
     // If no data at all, return empty response
     if (dateRange.length === 0) {
