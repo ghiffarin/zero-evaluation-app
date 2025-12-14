@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
-// Backend API URL - defaults to localhost:3002 for local development
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3002';
+// Backend API URL - defaults to localhost:3001 for local development
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
 const nextConfig: NextConfig = {
   // Enable React strict mode for better development experience

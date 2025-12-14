@@ -132,8 +132,8 @@ export default function ExportPage() {
 
     try {
       const token = getAuthToken();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api';
-      const url = `${baseUrl}/export/${format}`;
+      // Use Next.js proxy route to avoid CORS and port issues
+      const url = `/api/export/${format}`;
 
       const response = await fetch(url, {
         method: 'GET',
