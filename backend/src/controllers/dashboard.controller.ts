@@ -395,7 +395,13 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
     ]);
 
     // Helper to format date as YYYY-MM-DD
-    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+    // Using toISOString() is safe here since dates are stored as UTC midnight
+    const formatDate = (date: Date) => {
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
 
     // Collect all unique dates that have ANY data
     const allDatesWithData = new Set<string>();
@@ -481,9 +487,10 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
     // Helper to format display date as D Day
     const formatDisplayDate = (dateStr: string) => {
       const [year, month, day] = dateStr.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
+      // Create date in UTC to avoid timezone conversion issues
+      const date = new Date(Date.UTC(year, month - 1, day));
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      return `${day} ${dayNames[date.getDay()]}`;
+      return `${day} ${dayNames[date.getUTCDay()]}`;
     };
 
     // 1. Time Investment Chart Data - show all days of the week

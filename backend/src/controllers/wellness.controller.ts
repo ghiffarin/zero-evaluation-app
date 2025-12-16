@@ -30,11 +30,16 @@ export const createWellnessEntry = async (req: Request, res: Response): Promise<
     const data = req.body;
     const wellnessScore = calculateWellnessScore(data);
 
+    // Parse date string as UTC to avoid timezone issues
+    const dateStr = data.date;
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const dateObj = new Date(Date.UTC(year, month - 1, day));
+
     const record = await prisma.wellnessEntry.create({
       data: {
         ...data,
         userId,
-        date: new Date(data.date),
+        date: dateObj,
         wellnessScore,
       },
     });
@@ -78,7 +83,9 @@ export const upsertWellnessEntry = async (req: Request, res: Response): Promise<
   try {
     const userId = req.user!.id;
     const { date } = req.params;
-    const dateObj = new Date(date);
+    // Parse date string as UTC to avoid timezone issues
+    const [year, month, day] = date.split('-').map(Number);
+    const dateObj = new Date(Date.UTC(year, month - 1, day));
     const data = req.body;
     const wellnessScore = calculateWellnessScore(data);
 

@@ -162,7 +162,11 @@ function getLast7Days() {
   for (let i = 6; i >= 0; i--) {
     const date = new Date(now);
     date.setDate(now.getDate() - i);
-    const dateStr = date.toISOString().split('T')[0];
+    // Use local timezone to avoid off-by-one date issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     const displayDate = `${date.getDate()} ${dayNames[date.getDay()]}`;
     days.push({
       date: dateStr,
@@ -900,7 +904,7 @@ function WellnessModal({
     e.preventDefault();
     setSaving(true);
     await onSave({
-      date: new Date(formData.date).toISOString(),
+      date: formData.date,
       sleepHours: formData.sleepHours ? Number(formData.sleepHours) : undefined,
       sleepQuality: formData.sleepQuality ? Number(formData.sleepQuality) : undefined,
       energyLevel: formData.energyLevel ? Number(formData.energyLevel) : undefined,

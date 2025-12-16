@@ -11,7 +11,32 @@ const crud = createCrudController({
   searchFields: ['routineName', 'notes', 'postMood'],
 });
 
-export const createWorkoutSession = crud.create;
+// Custom create with date parsing to avoid timezone issues
+export const createWorkoutSession = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const data = req.body;
+
+    // Parse date string as UTC to avoid timezone issues
+    const dateStr = data.date;
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const dateObj = new Date(Date.UTC(year, month - 1, day));
+
+    const record = await prisma.workoutSession.create({
+      data: {
+        ...data,
+        userId,
+        date: dateObj,
+      },
+      include: { sets: true },
+    });
+
+    sendCreated(res, record, 'Workout session created successfully');
+  } catch (error) {
+    console.error('Create workout session error:', error);
+    sendError(res, 'Failed to create workout session', 500);
+  }
+};
 export const getAllWorkoutSessions = crud.getAll;
 export const getWorkoutSessionById = crud.getOne;
 export const updateWorkoutSession = crud.update;

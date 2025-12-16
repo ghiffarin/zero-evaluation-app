@@ -356,7 +356,11 @@ export default function WorkoutsPage() {
     for (let i = 6; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(now.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
+      // Use local timezone to avoid off-by-one date issues
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       const displayDate = `${date.getDate()} ${dayNames[date.getDay()]}`;
       days.push({
         date: dateStr,
@@ -1155,7 +1159,7 @@ function WorkoutModal({
     setSaving(true);
 
     const data: Partial<WorkoutSession> = {
-      date: new Date(formData.date).toISOString(),
+      date: formData.date,
       workoutType: formData.workoutType,
       routineName: formData.routineName || undefined,
       durationMin: formData.durationMin ? Number(formData.durationMin) : undefined,
