@@ -64,6 +64,8 @@ const TABLE_LABELS: Record<string, string> = {
   goals: 'Goals',
   goalProgress: 'Goal Progress',
   tags: 'Tags',
+  quizzes: 'Quizzes',
+  quizAttempts: 'Quiz Attempts',
 };
 
 const EXPORT_FORMATS = [

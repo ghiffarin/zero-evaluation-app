@@ -392,3 +392,131 @@ export const getQuizStats = async (req: Request, res: Response): Promise<void> =
     sendError(res, 'Failed to fetch quiz statistics', 500);
   }
 };
+
+// Export all quizzes
+export const exportQuizzes = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+
+    // Get all quizzes for the user
+    const quizzes = await prisma.quiz.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        title: true,
+        language: true,
+        difficulty: true,
+        version: true,
+        totalQuestions: true,
+        recommendedTimeMin: true,
+        correctPoints: true,
+        wrongPoints: true,
+        maxScore: true,
+        sectionsJson: true,
+        questionsJson: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Format quizzes for export
+    const exportData = quizzes.map(quiz => ({
+      meta: {
+        title: quiz.title,
+        language: quiz.language,
+        difficulty: quiz.difficulty,
+        version: quiz.version,
+        total_questions: quiz.totalQuestions,
+        recommended_time_minutes: quiz.recommendedTimeMin,
+        scoring: {
+          correct_points: quiz.correctPoints,
+          wrong_points: quiz.wrongPoints,
+          max_score: quiz.maxScore,
+        },
+      },
+      sections: quiz.sectionsJson,
+      questions: quiz.questionsJson,
+      exported_at: new Date().toISOString(),
+      original_id: quiz.id,
+      original_created_at: quiz.createdAt.toISOString(),
+    }));
+
+    sendSuccess(res, {
+      quizzes: exportData,
+      total: exportData.length,
+      exported_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Export quizzes error:', error);
+    sendError(res, 'Failed to export quizzes', 500);
+  }
+};
+
+// Import quizzes
+export const importQuizzes = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { quizzes } = req.body;
+
+    if (!Array.isArray(quizzes) || quizzes.length === 0) {
+      sendError(res, 'Invalid import data: quizzes array is required', 400);
+      return;
+    }
+
+    const importResults = {
+      success: [] as string[],
+      failed: [] as { title: string; error: string }[],
+    };
+
+    // Import each quiz
+    for (const quizData of quizzes) {
+      try {
+        // Validate quiz structure
+        const validation = validateQuizJSON(quizData);
+        if (!validation.valid) {
+          importResults.failed.push({
+            title: quizData.meta?.title || 'Unknown',
+            error: validation.error || 'Invalid structure',
+          });
+          continue;
+        }
+
+        const { meta, sections, questions } = quizData;
+
+        // Create quiz
+        const quiz = await prisma.quiz.create({
+          data: {
+            userId,
+            title: meta.title,
+            language: meta.language || 'id',
+            difficulty: meta.difficulty || 'medium',
+            version: meta.version || '1.0.0',
+            totalQuestions: meta.total_questions,
+            recommendedTimeMin: meta.recommended_time_minutes,
+            correctPoints: meta.scoring.correct_points,
+            wrongPoints: meta.scoring.wrong_points,
+            maxScore: meta.scoring.max_score,
+            sectionsJson: sections,
+            questionsJson: questions,
+          },
+        });
+
+        importResults.success.push(quiz.title);
+      } catch (error: any) {
+        importResults.failed.push({
+          title: quizData.meta?.title || 'Unknown',
+          error: error.message || 'Failed to create quiz',
+        });
+      }
+    }
+
+    sendSuccess(res, {
+      imported: importResults.success.length,
+      failed: importResults.failed.length,
+      results: importResults,
+    }, `Successfully imported ${importResults.success.length} quiz(zes)`);
+  } catch (error) {
+    console.error('Import quizzes error:', error);
+    sendError(res, 'Failed to import quizzes', 500);
+  }
+};

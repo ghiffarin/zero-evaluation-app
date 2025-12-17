@@ -422,6 +422,10 @@ export const api = {
       api.get<unknown>('/quizzes', params),
     getStats: () =>
       api.get<unknown>('/quizzes/stats'),
+    export: () =>
+      api.get<unknown>('/quizzes/export'),
+    import: (data: { quizzes: any[] }) =>
+      api.post<unknown>('/quizzes/import', data),
     getById: (id: string) =>
       api.get<unknown>(`/quizzes/${id}`),
     delete: (id: string) =>

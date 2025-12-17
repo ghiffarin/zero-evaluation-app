@@ -12,6 +12,8 @@ router.use(authenticate);
 router.post('/', quizController.createQuiz);
 router.get('/', quizController.getAllQuizzes);
 router.get('/stats', quizController.getQuizStats);
+router.get('/export', quizController.exportQuizzes);
+router.post('/import', quizController.importQuizzes);
 router.get('/:id', quizController.getQuizById);
 router.delete('/:id', quizController.deleteQuiz);
 

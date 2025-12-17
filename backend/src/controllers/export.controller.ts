@@ -30,6 +30,8 @@ const EXPORT_TABLES = {
   goalProgress: { model: 'goalProgress', name: 'goal_progress' },
   tags: { model: 'tag', name: 'tags' },
   tagLinks: { model: 'tagLink', name: 'tag_links' },
+  quizzes: { model: 'quiz', name: 'quizzes' },
+  quizAttempts: { model: 'quizAttempt', name: 'quiz_attempts' },
 } as const;
 
 // Helper to escape CSV values
@@ -144,6 +146,20 @@ async function fetchUserData(userId: string) {
   // Fetch universities and scholarships
   data.universities = await prisma.university.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
   data.scholarships = await prisma.scholarship.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
+
+  // Fetch quizzes
+  data.quizzes = await prisma.quiz.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
+
+  // Fetch quiz attempts through quizzes
+  const quizIds = data.quizzes.map((q: any) => q.id);
+  if (quizIds.length > 0) {
+    data.quizAttempts = await prisma.quizAttempt.findMany({
+      where: { quizId: { in: quizIds } },
+      orderBy: { createdAt: 'desc' }
+    });
+  } else {
+    data.quizAttempts = [];
+  }
 
   return data;
 }

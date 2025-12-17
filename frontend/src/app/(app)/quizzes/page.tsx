@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Search, Clock, FileText, TrendingUp, Trash2, Play, MoreVertical, Brain, Target, Lightbulb } from 'lucide-react';
+import { Plus, Search, Clock, FileText, TrendingUp, Trash2, Play, MoreVertical, Brain, Target, Lightbulb, Download, Upload } from 'lucide-react';
 import { PageContainer, PageHeader } from '@/components/layout';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -100,6 +100,66 @@ export default function QuizzesPage() {
     }
   }, []);
 
+  const handleExport = useCallback(async () => {
+    try {
+      const response = await api.quizzes.export() as { data: { quizzes: any[]; total: number; exported_at: string } };
+
+      // Create JSON file
+      const dataStr = JSON.stringify(response.data, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+
+      // Create download link
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `quizzes-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      alert(`Successfully exported ${response.data.total} quiz(zes)`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export quizzes');
+    }
+  }, []);
+
+  const handleImport = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      // Validate the structure
+      if (!data.quizzes || !Array.isArray(data.quizzes)) {
+        alert('Invalid import file: missing quizzes array');
+        return;
+      }
+
+      const response = await api.quizzes.import({ quizzes: data.quizzes }) as { data: { imported: number; failed: number; results: any } };
+
+      if (response.data.failed > 0) {
+        const failedList = response.data.results.failed.map((f: any) => `- ${f.title}: ${f.error}`).join('\n');
+        alert(`Import completed:\n✓ ${response.data.imported} succeeded\n✗ ${response.data.failed} failed\n\nFailed imports:\n${failedList}`);
+      } else {
+        alert(`Successfully imported ${response.data.imported} quiz(zes)`);
+      }
+
+      // Reload data
+      setStatsLoading(true);
+      loadData();
+    } catch (error) {
+      console.error('Import failed:', error);
+      alert('Failed to import quizzes. Please check the file format.');
+    }
+
+    // Reset input
+    event.target.value = '';
+  }, [loadData]);
+
   return (
     <PageContainer>
       <PageHeader
@@ -107,19 +167,39 @@ export default function QuizzesPage() {
         description="Practice and test your knowledge"
         actions={
           <div className="flex gap-2">
+            <button
+              onClick={handleExport}
+              className="inline-flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium py-2 px-4 rounded-lg transition-colors"
+              title="Export all quizzes"
+            >
+              <Download className="w-4 h-4" />
+              Export
+            </button>
+            <label className="inline-flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium py-2 px-4 rounded-lg transition-colors cursor-pointer"
+              title="Import quizzes from JSON file"
+            >
+              <Upload className="w-4 h-4" />
+              Import
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImport}
+                className="hidden"
+              />
+            </label>
             <Link
               href="/quizzes/generator"
               className="inline-flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium py-2 px-4 rounded-lg transition-colors"
             >
               <Lightbulb className="w-4 h-4" />
-              Quiz Generator
+              Generator
             </Link>
             <Link
               href="/quizzes/upload"
               className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2 px-4 rounded-lg transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Upload Quiz
+              Upload
             </Link>
           </div>
         }
