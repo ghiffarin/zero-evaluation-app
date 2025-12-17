@@ -155,7 +155,7 @@ async function fetchUserData(userId: string) {
   if (quizIds.length > 0) {
     data.quizAttempts = await prisma.quizAttempt.findMany({
       where: { quizId: { in: quizIds } },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { startedAt: 'desc' }
     });
   } else {
     data.quizAttempts = [];
