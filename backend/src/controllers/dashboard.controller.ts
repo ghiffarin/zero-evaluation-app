@@ -321,6 +321,7 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
       career,
       careerLogs,
       financial,
+      quizAttempts,
     ] = await Promise.all([
       prisma.dailyLog.findMany({
         where: {
@@ -391,6 +392,18 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
           date: { gte: startDate, lte: endDate }
         },
         orderBy: { date: 'asc' },
+      }),
+      prisma.quizAttempt.findMany({
+        where: {
+          quiz: { userId },
+          status: 'completed',
+          completedAt: { gte: startDate, lte: endDate }
+        },
+        orderBy: { completedAt: 'asc' },
+        select: {
+          completedAt: true,
+          timeSpentSeconds: true,
+        },
       }),
     ]);
 
@@ -484,6 +497,16 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
     const financialByDate = groupByDate(financial);
     const wellnessByDate = groupByDate(wellness);
 
+    // Group quiz attempts by completion date
+    const quizAttemptsByDate = new Map<string, typeof quizAttempts>();
+    quizAttempts.forEach(attempt => {
+      if (attempt.completedAt) {
+        const dateKey = formatDate(attempt.completedAt);
+        if (!quizAttemptsByDate.has(dateKey)) quizAttemptsByDate.set(dateKey, []);
+        quizAttemptsByDate.get(dateKey)!.push(attempt);
+      }
+    });
+
     // Helper to format display date as D Day
     const formatDisplayDate = (dateStr: string) => {
       const [year, month, day] = dateStr.split('-').map(Number);
@@ -503,13 +526,15 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
         const dayBooks = booksByDate.get(date) || [];
         const dayMastersPrep = mastersPrepByDate.get(date) || [];
         const dayCareer = careerByDate.get(date) || [];
+        const dayQuizzes = quizAttemptsByDate.get(date) || [];
 
         const workoutHours = dayWorkouts.reduce((sum, w) => sum + (w.durationMin || 0), 0) / 60;
         const learningHours = (
           daySkills.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0) +
           dayIelts.reduce((sum, i) => sum + (i.timeSpentMin || 0), 0) +
           dayBooks.reduce((sum, b) => sum + (b.timeSpentMin || 0), 0) +
-          dayMastersPrep.reduce((sum, m) => sum + (m.timeSpentMin || 0), 0)
+          dayMastersPrep.reduce((sum, m) => sum + (m.timeSpentMin || 0), 0) +
+          dayQuizzes.reduce((sum, q) => sum + (q.timeSpentSeconds || 0), 0) / 60
         ) / 60;
         // Include work hours from DailyLog, Career activities, and Career activity logs
         const dayCareerLogs = careerLogsByDate.get(date) || [];
@@ -556,10 +581,13 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
     const filteredDailyLogs = dailyLogs.filter(d => dateRangeSet.has(formatDate(d.date)));
     const filteredWellness = wellness.filter(w => dateRangeSet.has(formatDate(w.date)));
 
+    const filteredQuizAttempts = quizAttempts.filter(q => q.completedAt && dateRangeSet.has(formatDate(q.completedAt)));
+
     const totalIeltsMin = filteredIelts.reduce((sum, i) => sum + (i.timeSpentMin || 0), 0);
     const totalSkillsMin = filteredSkills.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0);
     const totalBooksMin = filteredBooks.reduce((sum, b) => sum + (b.timeSpentMin || 0), 0);
     const totalMastersPrepMin = filteredMastersPrep.reduce((sum, m) => sum + (m.timeSpentMin || 0), 0);
+    const totalQuizzesMin = filteredQuizAttempts.reduce((sum, q) => sum + (q.timeSpentSeconds || 0), 0) / 60;
 
     const learningBreakdownData = dateRange
       .map(date => {
@@ -567,11 +595,13 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
         const daySkills = skillsByDate.get(date) || [];
         const dayBooks = booksByDate.get(date) || [];
         const dayMastersPrep = mastersPrepByDate.get(date) || [];
+        const dayQuizzes = quizAttemptsByDate.get(date) || [];
 
         const ieltsHours = dayIelts.reduce((sum, i) => sum + (i.timeSpentMin || 0), 0) / 60;
         const skillsHours = daySkills.reduce((sum, s) => sum + (s.timeSpentMin || 0), 0) / 60;
         const booksHours = dayBooks.reduce((sum, b) => sum + (b.timeSpentMin || 0), 0) / 60;
         const mastersPrepHours = dayMastersPrep.reduce((sum, m) => sum + (m.timeSpentMin || 0), 0) / 60;
+        const quizzesHours = dayQuizzes.reduce((sum, q) => sum + (q.timeSpentSeconds || 0), 0) / 3600;
 
         return {
           date,
@@ -580,6 +610,7 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
           skills: Number(skillsHours.toFixed(2)),
           books: Number(booksHours.toFixed(2)),
           mastersPrep: Number(mastersPrepHours.toFixed(2)),
+          quizzes: Number(quizzesHours.toFixed(2)),
         };
       });
 
@@ -641,7 +672,7 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
 
     // 6. Summary Stats - use filtered data within the dateRange
     const summaryStats = {
-      totalLearningHours: Number(((totalIeltsMin + totalSkillsMin + totalBooksMin + totalMastersPrepMin) / 60).toFixed(1)),
+      totalLearningHours: Number(((totalIeltsMin + totalSkillsMin + totalBooksMin + totalMastersPrepMin + totalQuizzesMin) / 60).toFixed(1)),
       totalWorkoutHours: Number((filteredWorkouts.reduce((sum, w) => sum + (w.durationMin || 0), 0) / 60).toFixed(1)),
       // Include work hours from DailyLog, Career activities, and Career activity logs
       totalWorkHours: Number((

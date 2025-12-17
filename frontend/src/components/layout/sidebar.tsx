@@ -23,6 +23,7 @@ import {
   Menu,
   X,
   Download,
+  Brain,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -43,6 +44,7 @@ const modulesNavItems: NavItem[] = [
   { title: 'Journals', href: '/journals', icon: BookOpen },
   { title: 'Books', href: '/books', icon: BookOpen },
   { title: 'Skills', href: '/skills', icon: Wrench },
+  { title: 'Quizzes', href: '/quizzes', icon: Brain },
   { title: 'Workouts', href: '/workouts', icon: Dumbbell },
   { title: 'Wellness', href: '/wellness', icon: Heart },
   { title: 'Financial', href: '/financial', icon: DollarSign },

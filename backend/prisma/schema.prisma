@@ -47,6 +47,8 @@ model User {
   mastersPrepNotes      MastersPrepNote[]
   universities          University[]
   scholarships          Scholarship[]
+  quizzes               Quiz[]
+  quizAttempts          QuizAttempt[]
 
   @@map("users")
 }
@@ -1019,4 +1021,79 @@ enum UniversityStatus {
   accepted
   rejected
   enrolled
+}
+
+// ===========================================
+// QUIZ SYSTEM
+// ===========================================
+
+model Quiz {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Meta information
+  title              String
+  language           String   @default("id")
+  difficulty         String
+  version            String   @default("1.0.0")
+  totalQuestions     Int      @map("total_questions")
+  recommendedTimeMin Int      @map("recommended_time_min")
+
+  // Scoring configuration
+  correctPoints      Int      @default(1) @map("correct_points")
+  wrongPoints        Int      @default(0) @map("wrong_points")
+  maxScore           Int      @map("max_score")
+
+  // JSON content - stores sections and questions
+  sectionsJson       Json     @map("sections_json")
+  questionsJson      Json     @map("questions_json")
+
+  // Metadata
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  attempts           QuizAttempt[]
+
+  @@index([userId])
+  @@map("quizzes")
+}
+
+model QuizAttempt {
+  id                    String    @id @default(cuid())
+  userId                String    @map("user_id")
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizId                String    @map("quiz_id")
+  quiz                  Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  // Attempt configuration
+  mode                  String    // "practice" or "test"
+  status                String    @default("in_progress") // "in_progress", "completed", "abandoned"
+  isRandomized          Boolean   @default(false) @map("is_randomized")
+  randomizedOrderJson   Json?     @map("randomized_order_json") // Stores randomized question order
+
+  // Progress tracking
+  currentQuestionIndex  Int       @default(0) @map("current_question_index")
+
+  // Timing
+  startedAt             DateTime  @default(now()) @map("started_at")
+  completedAt           DateTime? @map("completed_at")
+  timeSpentSeconds      Int?      @map("time_spent_seconds")
+  lastSavedAt           DateTime? @map("last_saved_at")
+
+  // Scoring
+  score                 Int?
+  maxScore              Int       @map("max_score")
+  percentage            Float?
+
+  // Answers and results
+  answersJson           Json      @default("{}") @map("answers_json") // { questionId: userAnswer }
+  resultsJson           Json?     @map("results_json") // { questionId: { correct: bool, userAnswer, correctAnswer } }
+
+  @@index([userId])
+  @@index([quizId])
+  @@index([userId, quizId])
+  @@index([status])
+  @@map("quiz_attempts")
 }

@@ -18,6 +18,7 @@ import dashboardRoutes from './dashboard.routes.js';
 import reportsRoutes from './reports.routes.js';
 import exportRoutes from './export.routes.js';
 import importRoutes from './import.routes.js';
+import quizRoutes from './quiz.routes.js';
 
 const router = Router();
 
@@ -51,6 +52,9 @@ router.use('/masters-prep', mastersPrepRoutes);
 // Core routes
 router.use('/projects', projectRoutes);
 router.use('/goals', goalRoutes);
+
+// Quiz routes
+router.use('/quizzes', quizRoutes);
 
 // Export routes
 router.use('/export', exportRoutes);

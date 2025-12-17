@@ -413,6 +413,38 @@ export const api = {
     yearly: (year: number) =>
       api.get<unknown>('/reports/yearly', { year }),
   },
+
+  // Quiz API
+  quizzes: {
+    create: (data: unknown) =>
+      api.post<unknown>('/quizzes', data),
+    getAll: (params?: { page?: number; limit?: number; search?: string; difficulty?: string }) =>
+      api.get<unknown>('/quizzes', params),
+    getStats: () =>
+      api.get<unknown>('/quizzes/stats'),
+    getById: (id: string) =>
+      api.get<unknown>(`/quizzes/${id}`),
+    delete: (id: string) =>
+      api.delete(`/quizzes/${id}`),
+
+    // Quiz attempts
+    startAttempt: (quizId: string, data: { mode: 'practice' | 'test'; randomize?: boolean }) =>
+      api.post<unknown>(`/quizzes/${quizId}/start`, data),
+    getAttempt: (attemptId: string) =>
+      api.get<unknown>(`/quizzes/attempts/${attemptId}`),
+    submitAnswer: (attemptId: string, data: { questionId: string; answer: string }) =>
+      api.put<unknown>(`/quizzes/attempts/${attemptId}/answer`, data),
+    saveProgress: (attemptId: string, data: { currentQuestionIndex: number }) =>
+      api.put<unknown>(`/quizzes/attempts/${attemptId}/save`, data),
+    completeAttempt: (attemptId: string) =>
+      api.post<unknown>(`/quizzes/attempts/${attemptId}/complete`, {}),
+    getResults: (attemptId: string) =>
+      api.get<unknown>(`/quizzes/attempts/${attemptId}/results`),
+    getHistory: (quizId: string, params?: { status?: string }) =>
+      api.get<unknown>(`/quizzes/${quizId}/history`, params),
+    getAllAttempts: (params?: { page?: number; limit?: number; status?: string; mode?: string }) =>
+      api.get<unknown>('/quizzes/attempts/all', params),
+  },
 };
 
 export default api;

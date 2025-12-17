@@ -117,6 +117,7 @@ interface ChartData {
     skills: number;
     books: number;
     mastersPrep: number;
+    quizzes: number;
   }>;
   financialFlow: Array<{
     week: string;
@@ -635,6 +636,7 @@ export default function DashboardPage() {
                       <Bar dataKey="ielts" name="IELTS" stackId="learning" fill="#3b82f6" radius={[0, 0, 0, 0]} />
                       <Bar dataKey="skills" name="Skills" stackId="learning" fill="#10b981" radius={[0, 0, 0, 0]} />
                       <Bar dataKey="books" name="Books" stackId="learning" fill="#f59e0b" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="quizzes" name="Quizzes" stackId="learning" fill="#ec4899" radius={[0, 0, 0, 0]} />
                       <Bar dataKey="mastersPrep" name="Masters Prep" stackId="learning" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
