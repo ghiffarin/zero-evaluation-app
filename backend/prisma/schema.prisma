@@ -38,6 +38,7 @@ model User {
   workoutSessions       WorkoutSession[]
   wellnessEntries       WellnessEntry[]
   financialTransactions FinancialTransaction[]
+  budgets               Budget[]
   reflectionEntries     ReflectionEntry[]
   careerActivities      CareerActivity[]
   careerActivityLogs    CareerActivityLog[]
@@ -49,6 +50,9 @@ model User {
   scholarships          Scholarship[]
   quizzes               Quiz[]
   quizAttempts          QuizAttempt[]
+  safetyKits            SafetyKit[]
+  kitChecks             KitCheck[]
+  incidents             Incident[]
 
   @@map("users")
 }
@@ -679,6 +683,35 @@ enum InvestmentType {
   other
 }
 
+enum BudgetPeriod {
+  weekly
+  monthly
+  custom
+}
+
+model Budget {
+  id             String            @id @default(uuid())
+  userId         String            @map("user_id")
+  name           String
+  category       FinancialCategory
+  amount         Float             // Budget limit in IDR
+  period         BudgetPeriod
+  startDate      DateTime          @map("start_date") @db.Date
+  endDate        DateTime          @map("end_date") @db.Date
+  alertThreshold Float             @default(0.8) @map("alert_threshold") // Alert at 80% spent
+  isActive       Boolean           @default(true) @map("is_active")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, category])
+  @@index([userId, startDate, endDate])
+  @@index([userId, isActive])
+  @@map("budgets")
+}
+
 // ===========================================
 // 9. REFLECTION MODULE
 // ===========================================
@@ -1096,4 +1129,205 @@ model QuizAttempt {
   @@index([userId, quizId])
   @@index([status])
   @@map("quiz_attempts")
+}
+
+// ===========================================
+// 12. SAFETY KIT MODULE (Anti-Jreng)
+// ===========================================
+
+model SafetyKit {
+  id          String            @id @default(uuid())
+  userId      String            @map("user_id")
+  name        String
+  location    SafetyKitLocation
+  description String?           @db.Text
+  isActive    Boolean           @default(true) @map("is_active")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items  SafetyKitItem[]
+  checks KitCheck[]
+
+  @@unique([userId, location])
+  @@index([userId])
+  @@map("safety_kits")
+}
+
+model SafetyKitItem {
+  id             String             @id @default(uuid())
+  safetyKitId    String             @map("safety_kit_id")
+  name           String
+  category       SafetyItemCategory
+  priority       SafetyItemPriority
+  status         SafetyItemStatus   @default(ok)
+  quantity       Int                @default(1)
+  minQuantity    Int                @default(1) @map("min_quantity")
+  unit           String?            // pcs, bottle, pack
+  expiryDate     DateTime?          @map("expiry_date") @db.Date
+  purchaseDate   DateTime?          @map("purchase_date") @db.Date
+  estimatedPrice Float?             @map("estimated_price")
+  lastCheckedAt  DateTime?          @map("last_checked_at")
+  notes          String?            @db.Text
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  safetyKit     SafetyKit      @relation(fields: [safetyKitId], references: [id], onDelete: Cascade)
+  checkLines    KitCheckLine[]
+  incidentItems IncidentItem[]
+
+  @@index([safetyKitId])
+  @@map("safety_kit_items")
+}
+
+model KitCheck {
+  id             String       @id @default(uuid())
+  userId         String       @map("user_id")
+  safetyKitId    String       @map("safety_kit_id")
+  date           DateTime     @db.Date
+  checkType      KitCheckType @map("check_type")
+  readinessScore Float?       @map("readiness_score")
+  totalItems     Int?         @map("total_items")
+  itemsReady     Int?         @map("items_ready")
+  itemsIssue     Int?         @map("items_issue")
+  duration       Int?         // minutes spent checking
+  notes          String?      @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  // Relations
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  safetyKit SafetyKit      @relation(fields: [safetyKitId], references: [id], onDelete: Cascade)
+  lines     KitCheckLine[]
+
+  @@index([userId, date])
+  @@index([safetyKitId])
+  @@map("kit_checks")
+}
+
+model KitCheckLine {
+  id              String           @id @default(uuid())
+  kitCheckId      String           @map("kit_check_id")
+  safetyKitItemId String           @map("safety_kit_item_id")
+  statusFound     SafetyItemStatus @map("status_found")
+  quantityFound   Int              @map("quantity_found")
+  isOk            Boolean          @map("is_ok")
+  notes           String?          @db.Text
+
+  // Relations
+  kitCheck      KitCheck      @relation(fields: [kitCheckId], references: [id], onDelete: Cascade)
+  safetyKitItem SafetyKitItem @relation(fields: [safetyKitItemId], references: [id], onDelete: Cascade)
+
+  @@unique([kitCheckId, safetyKitItemId])
+  @@map("kit_check_lines")
+}
+
+model Incident {
+  id             String           @id @default(uuid())
+  userId         String           @map("user_id")
+  date           DateTime         @db.Date
+  time           String?          // HH:mm format
+  location       String?
+  incidentType   IncidentType     @map("incident_type")
+  severity       IncidentSeverity
+  title          String
+  description    String           @db.Text
+  whatHappened   String?          @map("what_happened") @db.Text
+  howResolved    String?          @map("how_resolved") @db.Text
+  lessonsLearned String?          @map("lessons_learned") @db.Text
+  wasKitUsed     Boolean          @default(false) @map("was_kit_used")
+  kitHelpful     Int?             @map("kit_helpful") // 1-5 rating
+  estimatedSaved Float?           @map("estimated_saved") // IDR saved by having kit
+  totalExpense   Float?           @map("total_expense") // IDR spent
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items    IncidentItem[]
+  expenses IncidentExpense[]
+
+  @@index([userId, date])
+  @@map("incidents")
+}
+
+model IncidentItem {
+  id              String  @id @default(uuid())
+  incidentId      String  @map("incident_id")
+  safetyKitItemId String  @map("safety_kit_item_id")
+  quantityUsed    Int     @default(1) @map("quantity_used")
+  wasHelpful      Boolean @default(true) @map("was_helpful")
+  wasMissing      Boolean @default(false) @map("was_missing") // Item was needed but missing
+  notes           String? @db.Text
+
+  // Relations
+  incident      Incident      @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  safetyKitItem SafetyKitItem @relation(fields: [safetyKitItemId], references: [id], onDelete: Cascade)
+
+  @@unique([incidentId, safetyKitItemId])
+  @@map("incident_items")
+}
+
+model IncidentExpense {
+  id          String   @id @default(uuid())
+  incidentId  String   @map("incident_id")
+  category    String   // medical, transport, replacement, food, other
+  description String
+  amountIdr   Float    @map("amount_idr")
+  date        DateTime @db.Date
+  notes       String?  @db.Text
+
+  // Relations
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+  @@map("incident_expenses")
+}
+
+// Safety Kit Enums
+enum SafetyKitLocation {
+  kost
+  home
+  motorbag
+}
+
+enum SafetyItemCategory {
+  health
+  power
+  weather
+  safety
+  tools
+}
+
+enum SafetyItemPriority {
+  critical
+  high
+  normal
+}
+
+enum SafetyItemStatus {
+  ok
+  low
+  out
+  replace
+}
+
+enum KitCheckType {
+  weekly
+  before_trip
+}
+
+enum IncidentType {
+  health
+  weather
+  power
+  safety
+  transport
+}
+
+enum IncidentSeverity {
+  low
+  med
+  high
 }

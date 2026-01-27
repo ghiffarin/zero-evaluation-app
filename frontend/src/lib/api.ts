@@ -264,6 +264,23 @@ export const api = {
     stats: () => api.get<unknown>('/financial/stats'),
   },
 
+  // Budget endpoints
+  budgets: {
+    list: (params?: { page?: number; limit?: number; isActive?: boolean; category?: string }) =>
+      api.paginated<unknown>('/budgets', params),
+    get: (id: string) => api.get<unknown>(`/budgets/${id}`),
+    create: (data: unknown) => api.post<unknown>('/budgets', data),
+    update: (id: string, data: unknown) => api.put<unknown>(`/budgets/${id}`, data),
+    delete: (id: string) => api.delete<unknown>(`/budgets/${id}`),
+    stats: () => api.get<unknown>('/budgets/stats'),
+    comparison: () => api.get<unknown>('/budgets/comparison'),
+    alerts: () => api.get<unknown>('/budgets/alerts'),
+    // Transaction integration endpoints
+    getByCategory: (category: string) => api.get<unknown>(`/budgets/category/${category}`),
+    getTransactions: (id: string, params?: { page?: number; limit?: number }) =>
+      api.paginated<unknown>(`/budgets/${id}/transactions`, params),
+  },
+
   // Reflections endpoints
   reflections: {
     list: (params?: { page?: number; limit?: number; type?: string }) =>
@@ -412,6 +429,63 @@ export const api = {
       api.get<unknown>('/reports/quarterly', { year, quarter }),
     yearly: (year: number) =>
       api.get<unknown>('/reports/yearly', { year }),
+  },
+
+  // Safety Kit API (Anti-Jreng)
+  safetyKit: {
+    // Stats & Overview
+    stats: () => api.get<unknown>('/safety-kit/stats'),
+    readiness: () => api.get<unknown>('/safety-kit/readiness'),
+    restock: () => api.get<unknown>('/safety-kit/restock'),
+    expiring: (days?: number) => api.get<unknown>('/safety-kit/expiring', days ? { days } : undefined),
+
+    // Kits
+    kits: {
+      list: () => api.get<unknown>('/safety-kit/kits'),
+      get: (id: string) => api.get<unknown>(`/safety-kit/kits/${id}`),
+      getByLocation: (location: string) => api.get<unknown>(`/safety-kit/kits/location/${location}`),
+      create: (data: unknown) => api.post<unknown>('/safety-kit/kits', data),
+      update: (id: string, data: unknown) => api.put<unknown>(`/safety-kit/kits/${id}`, data),
+      delete: (id: string) => api.delete<unknown>(`/safety-kit/kits/${id}`),
+    },
+
+    // Items
+    items: {
+      listByKit: (kitId: string) => api.get<unknown>(`/safety-kit/kits/${kitId}/items`),
+      get: (id: string) => api.get<unknown>(`/safety-kit/items/${id}`),
+      create: (kitId: string, data: unknown) => api.post<unknown>(`/safety-kit/kits/${kitId}/items`, data),
+      update: (id: string, data: unknown) => api.put<unknown>(`/safety-kit/items/${id}`, data),
+      delete: (id: string) => api.delete<unknown>(`/safety-kit/items/${id}`),
+      needingRestock: () => api.get<unknown>('/safety-kit/items/restock'),
+    },
+
+    // Checks
+    checks: {
+      list: (params?: { kitId?: string; page?: number; limit?: number }) =>
+        api.paginated<unknown>('/safety-kit/checks', params),
+      listByKit: (kitId: string) => api.get<unknown>(`/safety-kit/kits/${kitId}/checks`),
+      get: (id: string) => api.get<unknown>(`/safety-kit/checks/${id}`),
+      create: (data: unknown) => api.post<unknown>('/safety-kit/checks', data),
+      complete: (id: string, data: unknown) => api.post<unknown>(`/safety-kit/checks/${id}/complete`, data),
+    },
+
+    // Incidents
+    incidents: {
+      list: (params?: { page?: number; limit?: number; severity?: string }) =>
+        api.paginated<unknown>('/safety-kit/incidents', params),
+      get: (id: string) => api.get<unknown>(`/safety-kit/incidents/${id}`),
+      create: (data: unknown) => api.post<unknown>('/safety-kit/incidents', data),
+      update: (id: string, data: unknown) => api.put<unknown>(`/safety-kit/incidents/${id}`, data),
+      delete: (id: string) => api.delete<unknown>(`/safety-kit/incidents/${id}`),
+      addItem: (incidentId: string, data: unknown) =>
+        api.post<unknown>(`/safety-kit/incidents/${incidentId}/items`, data),
+      removeItem: (incidentId: string, itemId: string) =>
+        api.delete<unknown>(`/safety-kit/incidents/${incidentId}/items/${itemId}`),
+      addExpense: (incidentId: string, data: unknown) =>
+        api.post<unknown>(`/safety-kit/incidents/${incidentId}/expenses`, data),
+      removeExpense: (incidentId: string, expenseId: string) =>
+        api.delete<unknown>(`/safety-kit/incidents/${incidentId}/expenses/${expenseId}`),
+    },
   },
 
   // Quiz API

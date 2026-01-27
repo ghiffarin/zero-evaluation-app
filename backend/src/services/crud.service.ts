@@ -20,6 +20,7 @@ type PrismaModelName =
   | 'workoutSet'
   | 'wellnessEntry'
   | 'financialTransaction'
+  | 'budget'
   | 'reflectionEntry'
   | 'careerActivity'
   | 'jobApplication'
@@ -30,7 +31,14 @@ type PrismaModelName =
   | 'scholarship'
   | 'project'
   | 'goal'
-  | 'tag';
+  | 'tag'
+  | 'safetyKit'
+  | 'safetyKitItem'
+  | 'kitCheck'
+  | 'kitCheckLine'
+  | 'incident'
+  | 'incidentItem'
+  | 'incidentExpense';
 
 interface CrudOptions {
   model: PrismaModelName;

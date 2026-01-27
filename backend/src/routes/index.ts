@@ -9,6 +9,7 @@ import skillRoutes from './skill.routes.js';
 import workoutRoutes from './workout.routes.js';
 import wellnessRoutes from './wellness.routes.js';
 import financialRoutes from './financial.routes.js';
+import budgetRoutes from './budget.routes.js';
 import reflectionRoutes from './reflection.routes.js';
 import careerRoutes from './career.routes.js';
 import mastersPrepRoutes from './masters-prep.routes.js';
@@ -19,6 +20,7 @@ import reportsRoutes from './reports.routes.js';
 import exportRoutes from './export.routes.js';
 import importRoutes from './import.routes.js';
 import quizRoutes from './quiz.routes.js';
+import safetyKitRoutes from './safety-kit.routes.js';
 
 const router = Router();
 
@@ -45,6 +47,7 @@ router.use('/skills', skillRoutes);
 router.use('/workouts', workoutRoutes);
 router.use('/wellness', wellnessRoutes);
 router.use('/financial', financialRoutes);
+router.use('/budgets', budgetRoutes);
 router.use('/reflections', reflectionRoutes);
 router.use('/career', careerRoutes);
 router.use('/masters-prep', mastersPrepRoutes);
@@ -55,6 +58,9 @@ router.use('/goals', goalRoutes);
 
 // Quiz routes
 router.use('/quizzes', quizRoutes);
+
+// Safety Kit routes
+router.use('/safety-kit', safetyKitRoutes);
 
 // Export routes
 router.use('/export', exportRoutes);
