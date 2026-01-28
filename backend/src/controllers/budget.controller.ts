@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
-import { sendSuccess, sendError } from '../utils/response.js';
+import { sendSuccess, sendError, sendCreated } from '../utils/response.js';
 import { createCrudController } from '../services/crud.service.js';
 
 const crud = createCrudController({
@@ -10,10 +10,71 @@ const crud = createCrudController({
   dateField: 'startDate',
 });
 
-export const createBudget = crud.create;
+// Helper to parse date strings to proper Date objects for @db.Date fields
+function parseDateString(dateStr: string): Date {
+  // If already an ISO string with time, extract the date part
+  const datePart = dateStr.split('T')[0];
+  // Create date at midnight UTC to avoid timezone shifts
+  return new Date(datePart + 'T00:00:00.000Z');
+}
+
+// Custom create to handle date parsing
+export const createBudget = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { startDate, endDate, ...rest } = req.body;
+
+    const data = {
+      ...rest,
+      userId,
+      startDate: parseDateString(startDate),
+      endDate: parseDateString(endDate),
+    };
+
+    const budget = await prisma.budget.create({ data });
+    sendCreated(res, budget, 'Budget created successfully');
+  } catch (error) {
+    console.error('Create budget error:', error);
+    sendError(res, 'Failed to create budget', 500);
+  }
+};
+
 export const getAllBudgets = crud.getAll;
 export const getBudgetById = crud.getOne;
-export const updateBudget = crud.update;
+
+// Custom update to handle date parsing
+export const updateBudget = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { id } = req.params;
+    const { startDate, endDate, ...rest } = req.body;
+
+    // Check ownership
+    const existing = await prisma.budget.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      sendError(res, 'Budget not found', 404);
+      return;
+    }
+
+    const data: Record<string, unknown> = { ...rest };
+    if (startDate) data.startDate = parseDateString(startDate);
+    if (endDate) data.endDate = parseDateString(endDate);
+
+    const budget = await prisma.budget.update({
+      where: { id },
+      data,
+    });
+
+    sendSuccess(res, budget, 'Budget updated successfully');
+  } catch (error) {
+    console.error('Update budget error:', error);
+    sendError(res, 'Failed to update budget', 500);
+  }
+};
+
 export const deleteBudget = crud.delete;
 
 // Helper: Calculate spending for a budget
@@ -150,14 +211,18 @@ export const getBudgetComparison = async (req: Request, res: Response): Promise<
 export const getBudgetAlerts = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const today = new Date();
+
+    // Use date-only comparison to avoid timezone issues
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const todayDate = new Date(todayStr + 'T00:00:00.000Z');
 
     // Get all active budgets that haven't ended
     const budgets = await prisma.budget.findMany({
       where: {
         userId,
         isActive: true,
-        endDate: { gte: today },
+        endDate: { gte: todayDate },
       },
     });
 
@@ -175,7 +240,7 @@ export const getBudgetAlerts = async (req: Request, res: Response): Promise<void
         if (spent >= budget.amount * budget.alertThreshold) {
           // Calculate days remaining
           const daysRemaining = Math.ceil(
-            (budget.endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+            (budget.endDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24)
           );
 
           return {
@@ -253,7 +318,12 @@ export const getBudgetByCategory = async (req: Request, res: Response): Promise<
   try {
     const userId = req.user!.id;
     const { category } = req.params;
-    const today = new Date();
+
+    // Use date-only comparison to avoid timezone issues
+    // Create today's date at midnight UTC
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0]; // "YYYY-MM-DD"
+    const todayDate = new Date(todayStr + 'T00:00:00.000Z');
 
     // Find active budget for this category that covers today
     const budget = await prisma.budget.findFirst({
@@ -261,8 +331,8 @@ export const getBudgetByCategory = async (req: Request, res: Response): Promise<
         userId,
         category: category as any,
         isActive: true,
-        startDate: { lte: today },
-        endDate: { gte: today },
+        startDate: { lte: todayDate },
+        endDate: { gte: todayDate },
       },
       orderBy: { startDate: 'desc' },
     });
@@ -292,7 +362,7 @@ export const getBudgetByCategory = async (req: Request, res: Response): Promise<
 
     // Calculate days remaining in budget period
     const daysRemaining = Math.ceil(
-      (budget.endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      (budget.endDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24)
     );
 
     sendSuccess(res, {

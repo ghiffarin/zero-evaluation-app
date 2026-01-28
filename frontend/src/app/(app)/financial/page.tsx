@@ -3171,13 +3171,15 @@ function BudgetModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Send dates as YYYY-MM-DD strings to avoid timezone issues
+    // Backend will handle them as DATE type (no time component)
     onSave({
       name,
       category,
       amount: parseFloat(amount),
       period,
-      startDate: new Date(startDate).toISOString(),
-      endDate: new Date(endDate).toISOString(),
+      startDate,
+      endDate,
       alertThreshold: parseFloat(alertThreshold) / 100,
       isActive,
     });
