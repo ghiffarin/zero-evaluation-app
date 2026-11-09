@@ -92,7 +92,7 @@ export default function ReportsPage() {
       setLoading(true);
       setError(null);
       const result = await api.reports.monthly(selectedYear, selectedMonth);
-      setReportData(result.data);
+      setReportData(result.data as MonthlyReport);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

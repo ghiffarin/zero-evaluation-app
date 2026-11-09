@@ -730,10 +730,13 @@ const EXAMPLE_JSON = {
     }
   ]
 }`
-};
+} satisfies Record<keyof typeof PROMPTS, string>;
+
+type QuizType = keyof typeof PROMPTS;
+const QUIZ_TYPES = Object.keys(PROMPTS) as QuizType[];
 
 export default function QuizGeneratorPage() {
-  const [selectedType, setSelectedType] = useState('Type A - Numerical Reasoning');
+  const [selectedType, setSelectedType] = useState<QuizType>('Type A - Numerical Reasoning');
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedExample, setCopiedExample] = useState(false);
 
@@ -789,7 +792,7 @@ export default function QuizGeneratorPage() {
       <div className="mb-6">
         <h3 className="text-sm font-medium mb-3">Select Quiz Type</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          {Object.keys(PROMPTS).map((type) => (
+          {QUIZ_TYPES.map((type) => (
             <button
               key={type}
               onClick={() => setSelectedType(type)}
