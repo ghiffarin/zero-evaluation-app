@@ -107,11 +107,12 @@ export const createCrudController = (options: CrudOptions) => {
           }));
         }
 
-        // Additional filters
+        // Additional filters: plain string equality only. A `userId` key would
+        // replace the ownership scope above, and nested objects (?field[not]=x)
+        // become Prisma operators, so both are ignored.
         Object.entries(filters).forEach(([key, value]) => {
-          if (value !== undefined && value !== '') {
-            where[key] = value;
-          }
+          if (key === 'userId' || typeof value !== 'string' || value === '') return;
+          where[key] = value;
         });
 
         const [records, total] = await Promise.all([
