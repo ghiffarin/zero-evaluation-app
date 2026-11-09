@@ -1,17 +1,16 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { addDaysUTC, getUserToday } from '../utils/date.js';
 
 // Get today's summary
 export const getTodaySummary = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;
 
-    // Get today's date at midnight in local timezone
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // The user's calendar date (in their timezone), as stored in DATE columns
+    const today = await getUserToday(userId);
+    const tomorrow = addDaysUTC(today, 1);
 
     const [dailyLog, wellness, reflection, workouts, skills, financial, ielts] =
       await Promise.all([
@@ -102,12 +101,11 @@ export const getWeeklyOverview = async (req: Request, res: Response): Promise<vo
     const userId = req.user!.id;
     const { startDate } = req.query;
 
+    // 7 calendar days ending today (inclusive), or starting at ?startDate
     const start = startDate
-      ? new Date(startDate as string)
-      : new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 7);
+      ? new Date(`${String(startDate).slice(0, 10)}T00:00:00.000Z`)
+      : addDaysUTC(await getUserToday(userId), -6);
+    const end = addDaysUTC(start, 7);
 
     const [dailyLogs, wellness, workouts, skills, ielts, financial, journals, books] =
       await Promise.all([
@@ -208,12 +206,12 @@ export const getMonthlyStats = async (req: Request, res: Response): Promise<void
     const userId = req.user!.id;
     const { year, month } = req.query;
 
-    const now = new Date();
-    const targetYear = year ? parseInt(year as string) : now.getFullYear();
-    const targetMonth = month ? parseInt(month as string) - 1 : now.getMonth();
+    const today = await getUserToday(userId);
+    const targetYear = year ? parseInt(year as string) : today.getUTCFullYear();
+    const targetMonth = month ? parseInt(month as string) - 1 : today.getUTCMonth();
 
-    const start = new Date(targetYear, targetMonth, 1);
-    const end = new Date(targetYear, targetMonth + 1, 1);
+    const start = new Date(Date.UTC(targetYear, targetMonth, 1));
+    const end = new Date(Date.UTC(targetYear, targetMonth + 1, 1));
 
     const [dailyLogs, goals, ielts, workouts, financial] = await Promise.all([
       prisma.dailyLog.count({ where: { userId, date: { gte: start, lt: end } } }),
@@ -285,29 +283,28 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
     const validDays = [7, 14, 30].includes(days) ? days : 14;
 
     // Calculate date range to limit data fetched
-    let maxDaysToFetch = 100;
-    let endDate = new Date();
-    let startDate = new Date();
+    // Calendar dates as UTC midnight, matching the DATE columns (inclusive range)
+    const maxDaysToFetch = 100;
+    let endDate: Date;
+    let startDate: Date;
 
     if (useCustomRange) {
-      // Use custom date range
-      startDate = new Date(customStartDate);
-      endDate = new Date(customEndDate);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
+      startDate = new Date(`${customStartDate.slice(0, 10)}T00:00:00.000Z`);
+      endDate = new Date(`${customEndDate.slice(0, 10)}T00:00:00.000Z`);
 
-      // Calculate days in custom range for validation (max 365 days)
-      const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      if (daysDiff > 365 || daysDiff < 1) {
+      // Days in custom range, inclusive (max 365 days)
+      const daysDiff = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      if (!(daysDiff >= 1 && daysDiff <= 365)) {
         sendError(res, 'Date range must be between 1 and 365 days', 400);
         return;
       }
     } else {
-      // Use standard pagination with offset
-      endDate.setHours(23, 59, 59, 999); // End of today
-      startDate.setDate(startDate.getDate() - maxDaysToFetch);
-      startDate.setHours(0, 0, 0, 0); // Start of day
+      // Window ends on the user's today, in their timezone
+      endDate = await getUserToday(userId);
+      startDate = addDaysUTC(endDate, -maxDaysToFetch);
     }
+    // For timestamp columns (completedAt) the range must run to the end of endDate
+    const endExclusive = addDaysUTC(endDate, 1);
 
     // Fetch data with date filtering for better performance
     const [
@@ -397,7 +394,7 @@ export const getChartData = async (req: Request, res: Response): Promise<void> =
         where: {
           quiz: { userId },
           status: 'completed',
-          completedAt: { gte: startDate, lte: endDate }
+          completedAt: { gte: startDate, lt: endExclusive }
         },
         orderBy: { completedAt: 'asc' },
         select: {
