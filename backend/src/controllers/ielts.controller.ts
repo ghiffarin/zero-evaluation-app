@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import { sendSuccess, sendCreated, sendError, sendNotFound } from '../utils/response.js';
+import { withoutProtectedFields } from '../utils/sanitize.js';
 import { createCrudController } from '../services/crud.service.js';
 
 // IELTS Sessions
@@ -119,7 +120,7 @@ export const addMistakeToSession = async (req: Request, res: Response): Promise<
 
     const mistake = await prisma.ieltsMistake.create({
       data: {
-        ...req.body,
+        ...withoutProtectedFields(req.body),
         ieltsSessionId: sessionId,
       },
     });

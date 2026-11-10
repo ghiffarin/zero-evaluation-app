@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import { sendSuccess, sendCreated, sendError, sendNotFound } from '../utils/response.js';
+import { withoutProtectedFields } from '../utils/sanitize.js';
 import { createCrudController } from '../services/crud.service.js';
 
 // Workout Sessions
@@ -60,7 +61,7 @@ export const addSetToWorkout = async (req: Request, res: Response): Promise<void
 
     const set = await prisma.workoutSet.create({
       data: {
-        ...req.body,
+        ...withoutProtectedFields(req.body),
         workoutSessionId: sessionId,
       },
     });

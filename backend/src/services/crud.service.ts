@@ -6,6 +6,7 @@ import {
   sendError,
   sendNotFound,
 } from '../utils/response.js';
+import { withoutProtectedFields } from '../utils/sanitize.js';
 
 type PrismaModelName =
   | 'dailyLog'
@@ -59,7 +60,7 @@ export const createCrudController = (options: CrudOptions) => {
     create: async (req: Request, res: Response): Promise<void> => {
       try {
         const userId = req.user!.id;
-        const data = { ...req.body, userId };
+        const data = { ...withoutProtectedFields(req.body), userId };
 
         const record = await getModel().create({
           data,
@@ -205,7 +206,7 @@ export const createCrudController = (options: CrudOptions) => {
 
         const record = await getModel().update({
           where: { id },
-          data: req.body,
+          data: withoutProtectedFields(req.body),
           include,
         });
 
@@ -230,9 +231,9 @@ export const createCrudController = (options: CrudOptions) => {
               date: dateObj,
             },
           },
-          update: req.body,
+          update: withoutProtectedFields(req.body),
           create: {
-            ...req.body,
+            ...withoutProtectedFields(req.body),
             userId,
             [dateField]: dateObj,
           },

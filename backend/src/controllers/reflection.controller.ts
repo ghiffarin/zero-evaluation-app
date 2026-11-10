@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { withoutProtectedFields } from '../utils/sanitize.js';
 import { createCrudController } from '../services/crud.service.js';
 
 const crud = createCrudController({
@@ -30,9 +31,9 @@ export const upsertReflectionEntry = async (req: Request, res: Response): Promis
           date: dateObj,
         },
       },
-      update: req.body,
+      update: withoutProtectedFields(req.body),
       create: {
-        ...req.body,
+        ...withoutProtectedFields(req.body),
         userId,
         date: dateObj,
       },
