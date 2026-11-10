@@ -19,12 +19,14 @@ const protectedRoutes = [
   '/projects',
   '/settings',
   '/export',
+  '/quizzes',
+  '/reports',
 ];
 
 // Routes that should redirect to dashboard if authenticated
 const authRoutes = ['/login', '/register'];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('pd_os_token')?.value;
 
