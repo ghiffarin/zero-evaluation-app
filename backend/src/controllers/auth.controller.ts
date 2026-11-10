@@ -18,6 +18,12 @@ const generateToken = (id: string, email: string): string => {
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
+    // Single-user deployments close sign-ups once the owner's account exists
+    if (process.env.ALLOW_REGISTRATION === 'false') {
+      sendError(res, 'Registration is closed on this server', 403);
+      return;
+    }
+
     const { email, password, name, timezone } = req.body;
 
     // Check if user exists
