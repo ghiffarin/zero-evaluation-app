@@ -1,6 +1,6 @@
 # Zero Evaluation: Cloud Deployment Plan (Supabase + Vercel)
 
-**Status:** Phase 1 done, Phase 2 next · **Date:** 2026-11-10 · **Branch:** `ccr-c5b993d1-g22dsv`
+**Status:** Phase 1 done (spike passed), Phase 2 next · **Date:** 2026-11-10 · **Branch:** `ccr-c5b993d1-g22dsv`
 
 **Decisions taken (2026-11-10):** the app is for the owner only, Supabase stays on the Free plan, and there is no local data to migrate, so the cloud database starts empty and Phase 4 is skipped.
 
@@ -75,7 +75,7 @@ Each decision has a default, and the plan follows the default unless the owner c
 
 **Done when:** both apps build, the local smoke test passes, the preview spike returns 200 on `/api/health`, and the branch is merged into `main` through a pull request.
 
-**Result (2026-11-10):** steps 2 to 9 are done and verified locally. The smoke test passes 32 of 32 checks against the production builds with RLS enabled, a non-owner database role sees 0 rows while the app's role sees all of them, closed registration returns 403, and with `VERCEL` set the backend exports the app without opening a port. The Vercel preview spike (step 1) runs next.
+**Result (2026-11-10):** steps 2 to 9 are done and verified locally. The smoke test passes 32 of 32 checks against the production builds with RLS enabled, a non-owner database role sees 0 rows while the app's role sees all of them, closed registration returns 403, and with `VERCEL` set the backend exports the app without opening a port. The Vercel spike (step 1) also passed: Vercel project `zero-evaluation-api` (root `backend`, Express preset) serves `/api/health` with 200 and unknown routes with the app's own JSON 404 from a function in `sin1`. Two lessons came out of it. First, Vercel made the very first deployment of the new project a production deployment even though it came from a branch, and the build correctly stopped at `prisma migrate deploy` because no database is configured yet. Second, the project defaulted to Node 26 and ignored the version set through the API, so `backend/package.json` now pins `"engines": { "node": "22.x" }`.
 
 ### Phase 2: Supabase setup (owner, about 20 minutes)
 
@@ -92,7 +92,7 @@ Each decision has a default, and the plan follows the default unless the owner c
 2. **Backend:** create a new project `zero-evaluation-api` from the same repository with root directory `backend` and region `sin1`. Set its Deployment Protection so that the production domain is public, because the frontend's server-side rewrite cannot pass a Vercel login. The backend's own JWT check still protects every data route, and the first check in step 5 confirms that the frontend can reach the backend.
 3. **Environment variables:** the owner enters the values in Section 6. `BACKEND_URL` must exist before the frontend builds, because Next.js resolves rewrites at build time.
 4. **First production deploy:** merge to `main`. The backend build runs `prisma migrate deploy` against the empty Supabase database.
-5. **Verification on an empty database:** with `ALLOW_REGISTRATION=true`, run `BASE_URL=https://zero-evaluation-app.vercel.app node scripts/smoke-test.mjs`. The script creates two throwaway accounts and prints a `DELETE FROM users ...` statement at the end. Run that statement in the Supabase SQL editor, which removes both accounts and all their data by cascade. Then check Supabase's Security Advisor, which should report no errors.
+5. **Verification on an empty database:** with `ALLOW_REGISTRATION=true`, run `BASE_URL=<backend production URL> node scripts/smoke-test.mjs`. The backend URL is used because the frontend stays behind Vercel Authentication during setup, while the backend's production domain is public and serves the same `/api` routes. A second run with `BASE_URL=https://zero-evaluation-app.vercel.app` and `VERCEL_BYPASS_TOKEN` set also checks the frontend proxy, if a bypass token is created. The script creates two throwaway accounts and prints a `DELETE FROM users ...` statement at the end. Run that statement in the Supabase SQL editor, which removes both accounts and all their data by cascade. Then check Supabase's Security Advisor, which should report no errors.
 
 **Done when:** the smoke test passes on production, Security Advisor is clean, and the database holds no test data.
 
