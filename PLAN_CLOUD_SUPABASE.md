@@ -2,7 +2,7 @@
 
 **Status:** Phase 1 done (spike passed), Phase 2 next · **Date:** 2026-11-10 · **Branch:** `ccr-c5b993d1-g22dsv`
 
-**Decisions taken (2026-11-10):** the app is for the owner only, Supabase stays on the Free plan, and there is no local data to migrate, so the cloud database starts empty and Phase 4 is skipped.
+**Decisions taken (2026-11-10):** the app is for the owner only, Supabase stays on the Free plan, and there is no local data to migrate, so the cloud database starts empty and Phase 4 is skipped. The app runs fully in the cloud: no step needs the owner's laptop, because the owner's tasks happen in the Supabase and Vercel dashboards in a browser, and code changes go through cloud coding sessions.
 
 ## 1. Goal
 
@@ -127,7 +127,7 @@ After loading, compare row counts per table on both sides with `SELECT relname, 
 
 ### Phase 6: Operations
 
-1. **Backups:** a GitHub Actions workflow runs `pg_dump` every day, encrypts the file with `age` using a public key whose private key stays only on the owner's laptop, and stores it as a workflow artifact. Encryption is required because the repository is public. The `pg_dump` client version must match the Postgres major version shown in the Supabase dashboard.
+1. **Backups:** a GitHub Actions workflow runs `pg_dump` every day, encrypts the file with `age` using a public key, and stores it as a workflow artifact. The matching private key is kept only in the owner's password manager, not in the repository or in GitHub secrets. Encryption is required because the repository is public. The `pg_dump` client version must match the Postgres major version shown in the Supabase dashboard.
 2. **Inactivity pause:** free Supabase projects pause after one week without activity. Daily use of the app keeps the project active, and Supabase's documentation says a few requests a day is usually enough, although it is not a guarantee. If the project does pause, it is restored from the dashboard without losing data.
 3. **Monitoring:** Vercel function logs show backend errors, and the Supabase dashboard shows database size against the 500 MB free limit.
 
@@ -137,7 +137,7 @@ After loading, compare row counts per table on both sides with `SELECT relname, 
 |---|---|---|---|
 | zero-evaluation-api | `DATABASE_URL` | Transaction pooler URL, port 6543, with `?pgbouncer=true&connection_limit=1` | Used for queries. `pgbouncer=true` turns off prepared statements, which the pooler does not support. |
 | zero-evaluation-api | `DIRECT_URL` | Session pooler URL, port 5432 | Used only by Prisma Migrate. |
-| zero-evaluation-api | `JWT_SECRET` | Output of `openssl rand -hex 64` | Never reuse the example value. |
+| zero-evaluation-api | `JWT_SECRET` | A random string of at least 64 characters from a password manager's generator | No local tools are needed. Never reuse the example value. |
 | zero-evaluation-api | `JWT_EXPIRES_IN` | `7d` | Same as today. |
 | zero-evaluation-api | `NODE_ENV` | `production` | Hides internal error details. |
 | zero-evaluation-api | `FRONTEND_URL` | `https://zero-evaluation-app.vercel.app` | Used by the CORS setting. |
