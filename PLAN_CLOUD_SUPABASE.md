@@ -1,6 +1,8 @@
 # Zero Evaluation: Cloud Deployment Plan (Supabase + Vercel)
 
-**Status:** Draft for decision · **Date:** 2026-11-10 · **Base branch:** `ccr-c5b993d1-g22dsv`
+**Status:** Phase 1 done, Phase 2 next · **Date:** 2026-11-10 · **Branch:** `ccr-c5b993d1-g22dsv`
+
+**Decisions taken (2026-11-10):** the app is for the owner only, Supabase stays on the Free plan, and there is no local data to migrate, so the cloud database starts empty and Phase 4 is skipped.
 
 ## 1. Goal
 
@@ -14,7 +16,7 @@ The application builds and runs again on branch `ccr-c5b993d1-g22dsv`, where 27 
 - **Vercel Authentication protects every deployment of that project** except custom domains. Only someone logged in to the owner's Vercel account can open it today.
 - **The GitHub repository is public.** Any database backup stored in GitHub must therefore be encrypted, and secrets must never be committed.
 - **The in-app export and import do not cover all data.** Export skips `Budget` and the seven Safety Kit tables, and import also skips `Quiz` and `QuizAttempt`. The data migration must therefore use `pg_dump`, not the app's own export.
-- **About ten lines of date logic still use the server clock.** They are in `reports.controller.ts` (6 lines), `safety-kit.controller.ts` (3) and `financial.controller.ts` (1). Vercel runs in Coordinated Universal Time (UTC), so these would show the wrong day between 00:00 and 07:00 Western Indonesia Time (WIB). The dashboard was already fixed with `backend/src/utils/date.ts`, and the same helper fixes these.
+- **About ten lines of date logic still used the server clock** (fixed in Phase 1). Reports built month boundaries in server-local time, which pulled the last day of the previous month into a report on a server set to Western Indonesia Time (WIB), and the Safety Kit treated an item expiring today as already expired. Vercel runs in Coordinated Universal Time (UTC), where the reports happen to be correct, so this was mainly a local bug, but the same `backend/src/utils/date.ts` helper now makes both correct on any server.
 - **Write endpoints accept the raw request body.** A logged-in user can set fields such as `userId` on their own records. This matters little for a single-user app with registration closed, but it must be fixed before other people get accounts.
 
 ## 3. Target architecture
@@ -63,7 +65,7 @@ Each decision has a default, and the plan follows the default unless the owner c
 
 1. **Spike: Express as a Vercel Function.** Guard `app.listen()` in `backend/src/server.ts` so it only runs outside Vercel, keep `export default app`, and add `backend/vercel.json` with region `sin1`. Deploy one preview and confirm that `/api/health` returns 200. The backend compiles to CommonJS (`module: NodeNext` without `"type": "module"`), so this spike is where a module-format problem would show up. If the spike fails, switch to Option B and keep everything else in this plan.
 2. **Prisma connection.** Add `directUrl = env("DIRECT_URL")` to the datasource in `schema.prisma`. Stay on Prisma 6, because Prisma 7 changes how the direct URL is configured, and that upgrade should be its own change.
-3. **Safe migrations.** Add a `vercel-build` script that always runs `prisma generate` and `tsc`, but runs `prisma migrate deploy` only when `VERCEL_ENV` is `production`. This stops a preview deployment from changing the production schema. Backend previews are also switched off with an ignored build step for branches other than `main`.
+3. **Safe migrations.** Add a `vercel-build` script that always runs `prisma generate` and a type check, but runs `prisma migrate deploy` only when `VERCEL_ENV` is `production`. This stops a preview deployment from changing the production schema. In addition, the database variables exist only in the Production environment (Section 6), so a preview deployment cannot reach the database at all.
 4. **Registration switch.** Add an `ALLOW_REGISTRATION` environment variable. When it is `false`, `POST /api/auth/register` returns 403 and the register page shows that sign-ups are closed.
 5. **Protected fields.** Strip `id`, `userId`, `createdAt` and `updatedAt` from request bodies in `crud.service.ts` and in the six custom controllers that pass `req.body` to Prisma (daily log, IELTS, reflection, workout, safety kit and Master's prep). Full Zod validation follows only if Decision 1 opens the app to other users.
 6. **Remaining timezone bugs.** Move the server-clock date logic listed in Section 2 to `utils/date.ts`.
@@ -72,6 +74,8 @@ Each decision has a default, and the plan follows the default unless the owner c
 9. **Small cleanups.** Remove the dead "Forgot password?" link and rename `middleware.ts` to `proxy.ts`, which Next.js 16 asks for.
 
 **Done when:** both apps build, the local smoke test passes, the preview spike returns 200 on `/api/health`, and the branch is merged into `main` through a pull request.
+
+**Result (2026-11-10):** steps 2 to 9 are done and verified locally. The smoke test passes 32 of 32 checks against the production builds with RLS enabled, a non-owner database role sees 0 rows while the app's role sees all of them, closed registration returns 403, and with `VERCEL` set the backend exports the app without opening a port. The Vercel preview spike (step 1) runs next.
 
 ### Phase 2: Supabase setup (owner, about 20 minutes)
 
@@ -88,11 +92,14 @@ Each decision has a default, and the plan follows the default unless the owner c
 2. **Backend:** create a new project `zero-evaluation-api` from the same repository with root directory `backend` and region `sin1`. Set its Deployment Protection so that the production domain is public, because the frontend's server-side rewrite cannot pass a Vercel login. The backend's own JWT check still protects every data route, and the first check in step 5 confirms that the frontend can reach the backend.
 3. **Environment variables:** the owner enters the values in Section 6. `BACKEND_URL` must exist before the frontend builds, because Next.js resolves rewrites at build time.
 4. **First production deploy:** merge to `main`. The backend build runs `prisma migrate deploy` against the empty Supabase database.
-5. **Verification on an empty database:** with `ALLOW_REGISTRATION=true`, run `scripts/smoke-test.mjs` against the production URL with a throwaway account. Then check Supabase's Security Advisor, which should report no errors. Finally, delete the throwaway account so its data is removed by cascade.
+5. **Verification on an empty database:** with `ALLOW_REGISTRATION=true`, run `BASE_URL=https://zero-evaluation-app.vercel.app node scripts/smoke-test.mjs`. The script creates two throwaway accounts and prints a `DELETE FROM users ...` statement at the end. Run that statement in the Supabase SQL editor, which removes both accounts and all their data by cascade. Then check Supabase's Security Advisor, which should report no errors.
 
 **Done when:** the smoke test passes on production, Security Advisor is clean, and the database holds no test data.
 
-### Phase 4: Data migration from the laptop (owner, about 30 minutes)
+### Phase 4: Data migration from the laptop (skipped: no data to migrate)
+
+This phase is kept for reference in case local data appears later.
+
 
 The schema already exists in Supabase after Phase 3, so only the data moves. The dump leaves out the migration history table, because Supabase already has its own copy.
 
@@ -137,18 +144,18 @@ After loading, compare row counts per table on both sides with `SELECT relname, 
 | zero-evaluation-api | `ALLOW_REGISTRATION` | `true` during setup, then `false` | Added in Phase 1. |
 | zero-evaluation-app | `BACKEND_URL` | Production URL of `zero-evaluation-api` | Must be set before the frontend build. |
 
-All variables go in the Production environment only. Backend previews are switched off in Phase 1, so no preview deployment can touch the database.
+All variables go in the Production environment only, so no preview deployment can reach the database.
 
 ## 7. Risks and mitigations
 
 | Risk | Impact | Mitigation |
 |---|---|---|
 | Express does not deploy cleanly as a Vercel Function (entry file name or module format) | Phase 3 is blocked | Run the Phase 1 spike first, and fall back to Fly.io (Option B), which already has a config. |
-| A preview build runs migrations against production | The production schema changes unexpectedly | Run migrations only when `VERCEL_ENV=production`, and switch off backend previews. |
+| A preview build runs migrations against production | The production schema changes unexpectedly | Run migrations only when `VERCEL_ENV=production`, and keep database variables out of the Preview environment. |
 | Supabase Data API exposes the tables | Personal data could be read with the anonymous key | Turn off the Data API, enable RLS on every table, and check Security Advisor. |
 | No managed backups on the Free plan | Data loss after a mistake | Encrypted daily `pg_dump` in GitHub Actions, or Supabase Pro. |
 | The Free project pauses after a week idle | The app is offline until restored | Daily use plus the backup job, and a restore from the dashboard if needed. |
-| Server-clock date logic in the cloud (UTC) | Wrong "today" between 00:00 and 07:00 WIB | Fix the ten remaining places in Phase 1, and include a Jakarta-date check in the smoke test. |
+| Server-clock date logic | Wrong "today" or wrong period boundaries | Fixed in Phase 1 with `utils/date.ts`, and the smoke test checks dates against the Jakarta calendar. |
 | Open registration on a public URL | Strangers can create accounts | Set `ALLOW_REGISTRATION=false` at go-live. |
 | A secret is committed to the public repository | Full database access for anyone | Keep secrets only in Vercel and GitHub secrets, use `.env` (already in `.gitignore`), and rotate the database password immediately if a leak happens. |
 | Slow first request after idle (function cold start) | A short delay on the first page load | Acceptable for personal use, and the response time is measured during Phase 3. |
