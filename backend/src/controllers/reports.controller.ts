@@ -4,31 +4,31 @@ import { sendSuccess, sendError } from '../utils/response.js';
 
 // Helper to get date range for a month
 function getMonthDateRange(year: number, month: number) {
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+  const startDate = new Date(Date.UTC(year, month - 1, 1));
+  const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
   return { startDate, endDate };
 }
 
 // Helper to get date range for a quarter
 function getQuarterDateRange(year: number, quarter: number) {
   const startMonth = (quarter - 1) * 3;
-  const startDate = new Date(year, startMonth, 1);
-  const endDate = new Date(year, startMonth + 3, 0, 23, 59, 59, 999);
+  const startDate = new Date(Date.UTC(year, startMonth, 1));
+  const endDate = new Date(Date.UTC(year, startMonth + 3, 0, 23, 59, 59, 999));
   return { startDate, endDate };
 }
 
 // Helper to get date range for a semester
 function getSemesterDateRange(year: number, semester: number) {
   const startMonth = semester === 1 ? 0 : 6;
-  const startDate = new Date(year, startMonth, 1);
-  const endDate = new Date(year, startMonth + 6, 0, 23, 59, 59, 999);
+  const startDate = new Date(Date.UTC(year, startMonth, 1));
+  const endDate = new Date(Date.UTC(year, startMonth + 6, 0, 23, 59, 59, 999));
   return { startDate, endDate };
 }
 
 // Helper to get date range for a year
 function getYearDateRange(year: number) {
-  const startDate = new Date(year, 0, 1);
-  const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
+  const startDate = new Date(Date.UTC(year, 0, 1));
+  const endDate = new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999));
   return { startDate, endDate };
 }
 

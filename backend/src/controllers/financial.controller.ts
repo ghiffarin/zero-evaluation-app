@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { addDaysUTC } from '../utils/date.js';
 import { createCrudController } from '../services/crud.service.js';
 
 const crud = createCrudController({
@@ -102,8 +103,7 @@ export const getDailySpending = async (req: Request, res: Response): Promise<voi
     const userId = req.user!.id;
     const { date } = req.params;
     const dateObj = new Date(date);
-    const nextDay = new Date(dateObj);
-    nextDay.setDate(nextDay.getDate() + 1);
+    const nextDay = addDaysUTC(dateObj, 1);
 
     const transactions = await prisma.financialTransaction.findMany({
       where: {

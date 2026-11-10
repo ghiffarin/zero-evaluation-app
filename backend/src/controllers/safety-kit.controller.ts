@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import { sendSuccess, sendError, sendCreated, sendNotFound } from '../utils/response.js';
+import { addDaysUTC, getUserToday } from '../utils/date.js';
+import { withoutProtectedFields } from '../utils/sanitize.js';
 import { createCrudController } from '../services/crud.service.js';
 
 // ============================================
@@ -95,7 +97,7 @@ export const createItem = async (req: Request, res: Response): Promise<void> => 
 
     const item = await prisma.safetyKitItem.create({
       data: {
-        ...req.body,
+        ...withoutProtectedFields(req.body),
         safetyKitId: kitId,
         expiryDate: req.body.expiryDate ? new Date(req.body.expiryDate) : null,
         purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : null,
@@ -152,7 +154,7 @@ export const updateItem = async (req: Request, res: Response): Promise<void> => 
     const item = await prisma.safetyKitItem.update({
       where: { id },
       data: {
-        ...req.body,
+        ...withoutProtectedFields(req.body, ['safetyKitId']),
         expiryDate: req.body.expiryDate ? new Date(req.body.expiryDate) : undefined,
         purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : undefined,
         lastCheckedAt: req.body.lastCheckedAt ? new Date(req.body.lastCheckedAt) : undefined,
@@ -224,15 +226,15 @@ export const getExpiringItems = async (req: Request, res: Response): Promise<voi
     const userId = req.user!.id;
     const daysAhead = parseInt(req.query.days as string) || 30;
 
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + daysAhead);
+    const today = await getUserToday(userId);
+    const futureDate = addDaysUTC(today, daysAhead);
 
     const items = await prisma.safetyKitItem.findMany({
       where: {
         safetyKit: { userId },
         expiryDate: {
           lte: futureDate,
-          gte: new Date(),
+          gte: today,
         },
       },
       include: {
@@ -724,10 +726,10 @@ export const getSafetyKitStats = async (req: Request, res: Response): Promise<vo
     ).length;
 
     // Expiring items (next 30 days)
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 30);
+    const today = await getUserToday(userId);
+    const futureDate = addDaysUTC(today, 30);
     const expiringItems = allItems.filter(
-      (i) => i.expiryDate && new Date(i.expiryDate) <= futureDate && new Date(i.expiryDate) >= new Date()
+      (i) => i.expiryDate && i.expiryDate <= futureDate && i.expiryDate >= today
     ).length;
 
     // Average readiness score from last checks
@@ -857,15 +859,15 @@ export const getRestockReminders = async (req: Request, res: Response): Promise<
     });
 
     // Expiring items (30 days)
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 30);
+    const today = await getUserToday(userId);
+    const futureDate = addDaysUTC(today, 30);
 
     const expiringItems = await prisma.safetyKitItem.findMany({
       where: {
         safetyKit: { userId },
         expiryDate: {
           lte: futureDate,
-          gte: new Date(),
+          gte: today,
         },
       },
       include: {
