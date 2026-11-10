@@ -82,7 +82,7 @@ For manual development setup:
 cd backend
 npm install
 cp .env.example .env
-# Update DATABASE_URL in .env to your PostgreSQL instance
+# Update DATABASE_URL and DIRECT_URL in .env to your PostgreSQL instance (same value locally)
 npx prisma migrate dev
 npm run dev
 ```

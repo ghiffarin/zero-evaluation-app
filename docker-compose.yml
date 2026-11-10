@@ -32,6 +32,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${DB_USER:-pdos_user}:${DB_PASSWORD:-pdos_password}@database:5432/${DB_NAME:-pdos_db}
+      DIRECT_URL: postgresql://${DB_USER:-pdos_user}:${DB_PASSWORD:-pdos_password}@database:5432/${DB_NAME:-pdos_db}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       NODE_ENV: ${NODE_ENV:-production}

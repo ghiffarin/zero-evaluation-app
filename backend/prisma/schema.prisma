@@ -6,8 +6,11 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Migrations need a non-transaction-pooled connection (Supabase session
+  // pooler in the cloud). Locally it is the same database as DATABASE_URL.
+  directUrl = env("DIRECT_URL")
 }
 
 // ===========================================

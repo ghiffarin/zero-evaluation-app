@@ -111,8 +111,9 @@ export function generateBackendEnvContent(config: ZeroEvalConfig): string {
   return `# Zero Evaluation Backend Configuration
 # Generated on ${new Date().toISOString()}
 
-# Database
+# Database (DIRECT_URL is used by Prisma Migrate; locally the same database)
 DATABASE_URL=${config.databaseUrl}
+DIRECT_URL=${config.databaseUrl}
 
 # Authentication
 JWT_SECRET=${config.jwtSecret}

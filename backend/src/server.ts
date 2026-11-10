@@ -44,8 +44,9 @@ app.get('/', (req, res) => {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
+// Start server. On Vercel the platform calls the exported app per request,
+// so it must not open a port itself.
+if (!process.env.VERCEL) app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════════╗
 ║      Zero Evaluation Backend Server        ║

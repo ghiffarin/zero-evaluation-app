@@ -227,7 +227,7 @@ async function runMigrations(installPath: string, databaseUrl: string, onProgres
   await execa('npx', ['prisma', 'generate'], {
     cwd: backendPath,
     stdio: 'pipe',
-    env: { ...process.env, DATABASE_URL: databaseUrl },
+    env: { ...process.env, DATABASE_URL: databaseUrl, DIRECT_URL: databaseUrl },
   });
 
   onProgress?.({
@@ -240,7 +240,7 @@ async function runMigrations(installPath: string, databaseUrl: string, onProgres
   await execa('npx', ['prisma', 'migrate', 'deploy'], {
     cwd: backendPath,
     stdio: 'pipe',
-    env: { ...process.env, DATABASE_URL: databaseUrl },
+    env: { ...process.env, DATABASE_URL: databaseUrl, DIRECT_URL: databaseUrl },
   });
 }
 
