@@ -1,0 +1,44 @@
+-- Enable Row Level Security (RLS) on every table, with no policies.
+--
+-- The app reaches the database only through Prisma, which connects as the
+-- table owner. Owners bypass RLS, so the app keeps full access. Any other
+-- role, such as Supabase's public Data API roles (anon, authenticated), is
+-- denied every row. Tables added by later migrations need the same line.
+ALTER TABLE "_prisma_migrations" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "book_reading_sessions" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "books" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "budgets" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "career_activities" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "career_activity_logs" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "daily_logs" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "financial_transactions" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "goal_progress" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "goals" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ielts_mistakes" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ielts_sessions" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ielts_vocab" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "incident_expenses" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "incident_items" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "incidents" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "job_applications" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "journal_entries" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "kit_check_lines" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "kit_checks" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "masters_prep_items" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "masters_prep_notes" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "masters_prep_sessions" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "projects" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "quiz_attempts" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "quizzes" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "reflection_entries" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "safety_kit_items" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "safety_kits" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "scholarships" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "skill_sessions" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "tag_links" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "tags" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "universities" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "users" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "wellness_entries" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "workout_sessions" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "workout_sets" ENABLE ROW LEVEL SECURITY;
