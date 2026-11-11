@@ -1,29 +1,24 @@
 'use client';
 
 import * as React from 'react';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Sidebar } from './sidebar';
-import { Header } from './header';
+import { areaFor } from '@/lib/areas';
+import { RunningHeader } from './running-header';
 
 export interface AppLayoutProps {
   children: React.ReactNode;
   className?: string;
 }
 
+// The whole page below the header band is the area's color field
 export function AppLayout({ children, className }: AppLayoutProps) {
+  const area = areaFor(usePathname());
+
   return (
-    <div className="relative min-h-screen bg-background">
-      {/* Sidebar */}
-      <Sidebar />
-
-      {/* Main content area */}
-      <div className="md:pl-64">
-        {/* Header */}
-        <Header />
-
-        {/* Page content */}
-        <main className={cn('min-h-[calc(100vh-3.5rem)]', className)}>{children}</main>
-      </div>
+    <div className="min-h-screen" data-area={area.field ?? 'paper'}>
+      <RunningHeader />
+      <main className={cn('min-h-[calc(100vh-var(--header-h))]', className)}>{children}</main>
     </div>
   );
 }

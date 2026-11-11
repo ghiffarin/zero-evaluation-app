@@ -1,201 +1,226 @@
 @import "tailwindcss";
 
-/* Configure dark mode to use .dark class selector instead of media query */
+/* Dark mode follows the .dark class set by the theme toggle */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* =================================================================
-   PD-OS Design System - CSS Custom Properties
+   Zero Evaluation design system: athletic editorial
+   Swiss grid, one flat color per area, hairline rules instead of
+   boxes, Geist for reading and Geist Mono for every big number.
    ================================================================= */
 
-/* Base radius for consistent border-radius across the app */
 :root {
-  --radius: 0.625rem; /* 10px */
+  /* Base palette */
+  --ink: #000000;
+  --paper: #ffffff;
+  --stone: #d1d3d4;
+  --chart-grey: #b3b3b3;
+  --alert: #c4271b; /* only for errors and over-budget, never decoration */
 
-  /* Colors - Light Mode (default) */
-  --background: hsl(0 0% 100%);
-  --foreground: oklch(0.141 0.005 285.823);
+  /* Area colors: base and table tints (rows, status column, status header) */
+  --lilac: #c7adc3;   --lilac-t1: #ceb7ca;   --lilac-t2: #dbcad8;   --lilac-t3: #eee7ed;
+  --cobalt: #425fc2;  --cobalt-t1: #556fc8;  --cobalt-t2: #7187d1;  --cobalt-t3: #e2e7f6;
+  --oxblood: #5b1e19; --oxblood-t1: #723d39; --oxblood-t2: #8c615e; --oxblood-t3: #8c615e;
+  --lime: #e9fa82;    --lime-t1: #edfb9b;    --lime-t2: #f2fcb4;    --lime-t3: #f8fdd9;
 
-  /* Background levels for progressive depth */
-  --background-50: hsl(210 15% 98%);
-  --background-100: hsl(210 15% 95%);
-  --background-200: hsl(210 15% 92%);
-  --background-300: hsl(210 15% 88%);
+  /* Grid: 40 units on a 1920 canvas, so margins and gutters scale with the screen */
+  --gutter: clamp(16px, 2.0833vw, 40px);
+  --header-h: 40px;
 
-  /* Card */
-  --card: hsl(0 0% 100%);
-  --card-foreground: oklch(0.141 0.005 285.823);
+  /* Semantic tokens (white "intro" area by default) */
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper);
+  --card-foreground: var(--ink);
+  --popover: var(--paper);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+  --secondary: #f2f2f2;
+  --secondary-foreground: var(--ink);
+  --muted: #f2f2f2;
+  --muted-foreground: #5c5c5c;
+  --accent: #f2f2f2;
+  --accent-foreground: var(--ink);
+  --destructive: var(--alert);
+  --destructive-foreground: #ffffff;
+  --border: color-mix(in oklab, var(--foreground) 22%, transparent);
+  --border-secondary: color-mix(in oklab, var(--foreground) 12%, transparent);
+  --input: color-mix(in oklab, var(--foreground) 45%, transparent);
+  --ring: var(--foreground);
+  --overlay: rgb(0 0 0 / 0.55);
 
-  /* Popover */
-  --popover: hsl(0 0% 100%);
-  --popover-foreground: oklch(0.141 0.005 285.823);
+  /* Charts stay monochrome on top of the area color */
+  --chart-1: var(--foreground);
+  --chart-2: color-mix(in oklab, var(--foreground) 68%, transparent);
+  --chart-3: color-mix(in oklab, var(--foreground) 42%, transparent);
+  --chart-4: color-mix(in oklab, var(--foreground) 24%, transparent);
+  --chart-5: color-mix(in oklab, var(--foreground) 12%, transparent);
 
-  /* Primary - Main brand color */
-  --primary: oklch(0.21 0.006 285.885);
-  --primary-foreground: oklch(0.985 0 0);
+  /* Legacy sidebar tokens, kept so older class names still resolve */
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--muted);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
 
-  /* Secondary */
-  --secondary: hsl(210 20% 96%);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-
-  /* Muted - Subtle backgrounds */
-  --muted: hsl(210 20% 96%);
-  --muted-foreground: oklch(0.556 0.016 285.938);
-
-  /* Accent - Hover states */
-  --accent: hsl(210 20% 96%);
-  --accent-foreground: oklch(0.21 0.006 285.885);
-
-  /* Destructive - Errors */
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: hsl(0 0% 100%);
-
-  /* Border - soft, subtle separation */
-  --border: hsl(220 10% 94%);
-  --border-secondary: hsl(220 10% 97%);
-
-  /* Input & Ring */
-  --input: oklch(0.3039 0.04 213.68 / 0.15);
-  --ring: oklch(0.705 0.015 286.067);
-
-  /* Chart colors for data visualization */
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-
-  /* Sidebar */
-  --sidebar: hsl(0 0% 98%);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.21 0.006 285.885);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: hsl(210 20% 96%);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: hsl(220 10% 94%);
-  --sidebar-ring: oklch(0.705 0.015 286.067);
-
-  /* Overlay for modals */
-  --overlay: hsl(0 0% 0% / 0.5);
+  /* Legacy background ramp */
+  --background-50: var(--muted);
+  --background-100: var(--muted);
+  --background-200: var(--muted);
+  --background-300: var(--muted);
 }
 
-/* Dark mode overrides */
+/* Dark mode: ink and paper swap, area colors stay the same */
 .dark {
-  --background: hsl(0 0% 7%);
-  --foreground: hsl(0 0% 95%);
-
-  /* Background levels - subtle progression for depth */
-  --background-50: hsl(0 0% 9%);
-  --background-100: hsl(0 0% 11%);
-  --background-200: hsl(0 0% 13%);
-  --background-300: hsl(0 0% 15%);
-
-  /* Card - slightly elevated from background */
-  --card: hsl(0 0% 10%);
-  --card-foreground: hsl(0 0% 95%);
-
-  /* Popover */
-  --popover: hsl(0 0% 12%);
-  --popover-foreground: hsl(0 0% 95%);
-
-  /* Primary */
-  --primary: hsl(0 0% 95%);
-  --primary-foreground: hsl(0 0% 9%);
-
-  /* Secondary */
-  --secondary: hsl(0 0% 14%);
-  --secondary-foreground: hsl(0 0% 95%);
-
-  /* Muted - subtle backgrounds */
-  --muted: hsl(0 0% 14%);
-  --muted-foreground: hsl(0 0% 65%);
-
-  /* Accent */
-  --accent: hsl(0 0% 15%);
-  --accent-foreground: hsl(0 0% 95%);
-
-  /* Destructive */
-  --destructive: hsl(0 72% 51%);
-  --destructive-foreground: hsl(0 0% 100%);
-
-  /* Border - soft, subtle separation */
-  --border: hsl(0 0% 15%);
-  --border-secondary: hsl(0 0% 12%);
-
-  /* Input & Ring */
-  --input: hsl(0 0% 15%);
-  --ring: hsl(0 0% 55%);
-
-  /* Chart colors - adjusted for dark mode */
-  --chart-1: oklch(0.55 0.2 264);
-  --chart-2: oklch(0.7 0.15 162);
-  --chart-3: oklch(0.75 0.17 70);
-  --chart-4: oklch(0.65 0.22 304);
-  --chart-5: oklch(0.68 0.22 16);
-
-  /* Sidebar - slightly darker than main background */
-  --sidebar: hsl(0 0% 6%);
-  --sidebar-foreground: hsl(0 0% 95%);
-  --sidebar-primary: hsl(0 0% 95%);
-  --sidebar-primary-foreground: hsl(0 0% 9%);
-  --sidebar-accent: hsl(0 0% 14%);
-  --sidebar-accent-foreground: hsl(0 0% 95%);
-  --sidebar-border: hsl(0 0% 13%);
-  --sidebar-ring: hsl(0 0% 55%);
-
-  /* Overlay for modals */
-  --overlay: hsl(0 0% 0% / 0.75);
-
+  --background: #0b0b0b;
+  --foreground: #f5f5f5;
+  --card: #0b0b0b;
+  --card-foreground: #f5f5f5;
+  --popover: #141414;
+  --popover-foreground: #f5f5f5;
+  --primary: #f5f5f5;
+  --primary-foreground: #0b0b0b;
+  --secondary: #1c1c1c;
+  --secondary-foreground: #f5f5f5;
+  --muted: #1c1c1c;
+  --muted-foreground: #a6a6a6;
+  --accent: #1c1c1c;
+  --accent-foreground: #f5f5f5;
+  --overlay: rgb(0 0 0 / 0.75);
   color-scheme: dark;
 }
 
-/* Tailwind v4 theme configuration - references the CSS custom properties */
+/* =================================================================
+   Areas: color = location. Each area owns one flat field color.
+   Everything inside inherits the matching text, rule and input colors.
+   ================================================================= */
+
+/* Mixes that depend on the text color are re-declared here so they are
+   recomputed inside each area (custom properties resolve where declared). */
+[data-area], .band {
+  --border: color-mix(in oklab, var(--foreground) 22%, transparent);
+  --border-secondary: color-mix(in oklab, var(--foreground) 12%, transparent);
+  --input: color-mix(in oklab, var(--foreground) 45%, transparent);
+  --ring: var(--foreground);
+  --chart-1: var(--foreground);
+  --chart-2: color-mix(in oklab, var(--foreground) 68%, transparent);
+  --chart-3: color-mix(in oklab, var(--foreground) 42%, transparent);
+  --chart-4: color-mix(in oklab, var(--foreground) 24%, transparent);
+  --chart-5: color-mix(in oklab, var(--foreground) 12%, transparent);
+}
+@layer base {
+  [data-area], .band { background-color: var(--background); color: var(--foreground); }
+}
+
+/* The running header band stays paper-colored on every page, even on area
+   fields, so it uses the base tokens again. */
+.band {
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --muted-foreground: #5c5c5c;
+  --accent: #f2f2f2;
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+}
+.dark .band {
+  --background: #0b0b0b;
+  --foreground: #f5f5f5;
+  --muted-foreground: #a6a6a6;
+  --accent: #1c1c1c;
+  --primary: #f5f5f5;
+  --primary-foreground: #0b0b0b;
+}
+
+[data-area="learn"], [data-area="money"], [data-area="reports"] {
+  --foreground: #ffffff;
+  --card-foreground: #ffffff;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --secondary-foreground: #ffffff;
+  --accent-foreground: #ffffff;
+  --muted-foreground: rgb(255 255 255 / 0.78);
+  color-scheme: dark;
+}
+
+[data-area="body"], [data-area="growth"] {
+  --foreground: #000000;
+  --card-foreground: #000000;
+  --popover-foreground: #000000;
+  --primary: #000000;
+  --secondary-foreground: #000000;
+  --accent-foreground: #000000;
+  --muted-foreground: rgb(0 0 0 / 0.68);
+  color-scheme: light;
+}
+
+[data-area="learn"] {
+  --background: var(--cobalt); --card: var(--cobalt); --popover: var(--cobalt);
+  --primary-foreground: var(--cobalt);
+  --muted: var(--cobalt-t1); --secondary: var(--cobalt-t1); --accent: var(--cobalt-t1);
+}
+[data-area="body"] {
+  --background: var(--lime); --card: var(--lime); --popover: var(--lime);
+  --primary-foreground: var(--lime);
+  --muted: var(--lime-t1); --secondary: var(--lime-t1); --accent: var(--lime-t2);
+}
+[data-area="money"] {
+  --background: var(--oxblood); --card: var(--oxblood); --popover: var(--oxblood);
+  --primary-foreground: var(--oxblood);
+  --muted: var(--oxblood-t1); --secondary: var(--oxblood-t1); --accent: var(--oxblood-t1);
+}
+[data-area="growth"] {
+  --background: var(--lilac); --card: var(--lilac); --popover: var(--lilac);
+  --primary-foreground: var(--lilac);
+  --muted: var(--lilac-t1); --secondary: var(--lilac-t1); --accent: var(--lilac-t2);
+}
+[data-area="reports"] {
+  --background: #000000; --card: #000000; --popover: #141414;
+  --primary-foreground: #000000;
+  --muted: #333333; --secondary: #333333; --accent: #333333;
+}
+
+/* =================================================================
+   Tailwind theme
+   ================================================================= */
+
 @theme inline {
-  /* Typography */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
-  /* Color tokens that reference CSS custom properties */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-
   --color-background-50: var(--background-50);
   --color-background-100: var(--background-100);
   --color-background-200: var(--background-200);
   --color-background-300: var(--background-300);
-
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-
   --color-border: var(--border);
   --color-border-secondary: var(--border-secondary);
-
   --color-input: var(--input);
   --color-ring: var(--ring);
-
+  --color-overlay: var(--overlay);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -204,222 +229,156 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-stone: var(--stone);
+  --color-alert: var(--alert);
 
-  --color-overlay: var(--overlay);
+  /* No rounded boxes: only pills and rings (rounded-full) stay round */
+  --radius-xs: 0px; --radius-sm: 0px; --radius-md: 0px; --radius-lg: 0px;
+  --radius-xl: 0px; --radius-2xl: 0px; --radius-3xl: 0px; --radius-4xl: 0px;
 
-  /* Radius scale */
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* No shadows */
+  --shadow-2xs: 0 0 #0000; --shadow-xs: 0 0 #0000; --shadow-sm: 0 0 #0000; --shadow-md: 0 0 #0000;
+  --shadow-lg: 0 0 #0000; --shadow-xl: 0 0 #0000; --shadow-2xl: 0 0 #0000;
+
+  /* Monochrome palette. Hard-coded accent colors across the app (text-green-600,
+     bg-blue-50, ...) render as strengths of the current text color, so numbers
+     and status marks stay ink on white and white on dark area fields. Red is
+     remapped too: real errors use the destructive token (--alert) instead. */
+  --color-red-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-red-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-red-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-red-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-red-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-red-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-red-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-red-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-red-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-red-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-red-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-green-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-green-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-green-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-green-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-green-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-green-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-green-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-green-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-green-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-green-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-green-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-emerald-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-emerald-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-emerald-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-emerald-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-emerald-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-emerald-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-emerald-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-emerald-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-emerald-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-emerald-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-emerald-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-teal-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-teal-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-teal-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-teal-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-teal-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-teal-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-teal-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-teal-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-teal-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-teal-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-teal-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-cyan-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-cyan-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-cyan-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-cyan-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-cyan-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-cyan-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-cyan-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-cyan-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-cyan-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-cyan-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-cyan-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-sky-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-sky-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-sky-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-sky-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-sky-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-sky-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-sky-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-sky-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-sky-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-sky-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-sky-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-blue-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-blue-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-blue-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-blue-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-blue-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-blue-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-blue-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-blue-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-blue-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-blue-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-blue-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-indigo-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-indigo-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-indigo-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-indigo-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-indigo-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-indigo-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-indigo-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-indigo-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-indigo-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-indigo-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-indigo-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-violet-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-violet-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-violet-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-violet-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-violet-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-violet-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-violet-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-violet-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-violet-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-violet-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-violet-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-purple-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-purple-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-purple-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-purple-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-purple-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-purple-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-purple-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-purple-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-purple-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-purple-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-purple-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-fuchsia-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-fuchsia-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-fuchsia-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-fuchsia-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-fuchsia-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-fuchsia-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-fuchsia-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-fuchsia-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-fuchsia-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-fuchsia-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-fuchsia-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-pink-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-pink-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-pink-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-pink-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-pink-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-pink-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-pink-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-pink-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-pink-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-pink-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-pink-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-rose-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-rose-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-rose-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-rose-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-rose-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-rose-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-rose-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-rose-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-rose-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-rose-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-rose-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-amber-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-amber-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-amber-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-amber-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-amber-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-amber-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-amber-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-amber-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-amber-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-amber-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-amber-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-yellow-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-yellow-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-yellow-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-yellow-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-yellow-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-yellow-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-yellow-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-yellow-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-yellow-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-yellow-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-yellow-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-orange-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-orange-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-orange-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-orange-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-orange-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-orange-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-orange-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-orange-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-orange-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-orange-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-orange-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-lime-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-lime-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-lime-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-lime-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-lime-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-lime-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-lime-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-lime-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-lime-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-lime-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-lime-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-gray-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-gray-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-gray-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-gray-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-gray-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-gray-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-gray-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-gray-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-gray-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-gray-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-gray-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-slate-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-slate-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-slate-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-slate-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-slate-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-slate-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-slate-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-slate-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-slate-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-slate-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-slate-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-zinc-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-zinc-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-zinc-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-zinc-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-zinc-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-zinc-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-zinc-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-zinc-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-zinc-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-zinc-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-zinc-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-neutral-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-neutral-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-neutral-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-neutral-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-neutral-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-neutral-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-neutral-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-neutral-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-neutral-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-neutral-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-neutral-950: color-mix(in oklab, var(--foreground) 100%, transparent);
+  --color-stone-50: color-mix(in oklab, var(--foreground) 5%, transparent); --color-stone-100: color-mix(in oklab, var(--foreground) 8%, transparent); --color-stone-200: color-mix(in oklab, var(--foreground) 14%, transparent); --color-stone-300: color-mix(in oklab, var(--foreground) 24%, transparent); --color-stone-400: color-mix(in oklab, var(--foreground) 45%, transparent); --color-stone-500: color-mix(in oklab, var(--foreground) 62%, transparent); --color-stone-600: color-mix(in oklab, var(--foreground) 76%, transparent); --color-stone-700: color-mix(in oklab, var(--foreground) 86%, transparent); --color-stone-800: color-mix(in oklab, var(--foreground) 94%, transparent); --color-stone-900: color-mix(in oklab, var(--foreground) 100%, transparent); --color-stone-950: color-mix(in oklab, var(--foreground) 100%, transparent);
 }
 
 /* =================================================================
-   Base Styles
+   Base
    ================================================================= */
 
-* {
-  border-color: var(--border);
+/* Base rules live in a layer so Tailwind utilities (border-foreground,
+   bg-*, ...) can override them; unlayered CSS would always win. */
+@layer base {
+  * { border-color: var(--border); }
+
+  html, body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4 { text-wrap: balance; }
 }
 
-html {
-  background-color: var(--background);
-  color: var(--foreground);
-}
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+::selection { background: var(--foreground); color: var(--background); }
 
-body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
-  font-feature-settings: "rlig" 1, "calt" 1;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* =================================================================
+   Editorial type
+   ================================================================= */
+
+@layer components {
+  /* Every big number: Geist Mono Medium, tight, tabular */
+  .num {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Running header and small labels: mono, uppercase */
+  .label-mono {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  /* Buttons inside mono labels (header band, menu) keep the mono uppercase style */
+  .label-mono :where(button) { font: inherit; letter-spacing: inherit; text-transform: inherit; }
+
+  /* Placeholders in big number fields must not read as entered values */
+  input.num::placeholder { color: color-mix(in oklab, var(--foreground) 28%, transparent); }
+
+  /* Title rule under page titles: 71 x 1 on the 1920 canvas */
+  .title-rule { width: clamp(40px, 3.7vw, 71px); height: 1px; background: currentColor; }
+
+  /* Page title and deck, scaled from 44 / 26 on the 1920 canvas */
+  .page-title { font-size: clamp(26px, 2.29vw, 44px); line-height: 1.14; font-weight: 700; letter-spacing: -0.01em; }
+  .page-deck { font-size: clamp(16px, 1.35vw, 26px); line-height: 1.16; }
 }
 
 /* =================================================================
-   Scrollbar Styling
+   Charts (Recharts): monochrome on the area color. Axis 1px in the text
+   color, horizontal hairline grid only, legends and ticks in text color.
    ================================================================= */
-
-/* Hide scrollbar utility class */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-/* Custom scrollbar for webkit browsers */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
-}
+.recharts-cartesian-axis-tick-value, .recharts-polar-angle-axis-tick-value { fill: var(--muted-foreground); font-size: 11px; }
+.recharts-cartesian-axis-line, .recharts-cartesian-axis-tick-line { stroke: var(--foreground); }
+.recharts-cartesian-grid-horizontal line { stroke: var(--border); stroke-dasharray: none; }
+.recharts-cartesian-grid-vertical line { display: none; }
+.recharts-legend-item-text { color: var(--foreground) !important; font-size: 12px; }
+.recharts-default-tooltip { border-radius: 0 !important; }
+.recharts-text.recharts-label { fill: var(--foreground); }
 
 /* =================================================================
-   Focus Styles
+   Utilities
    ================================================================= */
 
-:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
 
-/* =================================================================
-   Selection Styles
-   ================================================================= */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); }
+::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
 
-::selection {
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slide-down { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scale-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-/* =================================================================
-   Animation Utilities
-   ================================================================= */
+.animate-fade-in { animation: fade-in 200ms ease-out; }
+.animate-slide-up { animation: slide-up 200ms ease-out; }
+.animate-slide-down { animation: slide-down 200ms ease-out; }
+.animate-scale-in { animation: scale-in 200ms ease-out; }
+.animate-spin { animation: spin 1s linear infinite; }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
+.line-clamp-1, .line-clamp-2, .line-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+.line-clamp-1 { -webkit-line-clamp: 1; }
+.line-clamp-2 { -webkit-line-clamp: 2; }
+.line-clamp-3 { -webkit-line-clamp: 3; }
 
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* Modal overlay (31 dialogs use it). The dialog panel itself stays a flat
+   field of the current area color: no radius, no shadow. */
+.modal-overlay { background-color: var(--overlay); }
 
-@keyframes slide-down {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 200ms ease-out;
-}
-
-.animate-slide-up {
-  animation: slide-up 200ms ease-out;
-}
-
-.animate-slide-down {
-  animation: slide-down 200ms ease-out;
-}
-
-.animate-scale-in {
-  animation: scale-in 200ms ease-out;
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-/* =================================================================
-   Utility Classes
-   ================================================================= */
-
-/* Line clamp utilities */
-.line-clamp-1 {
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Gradient text */
-.gradient-text {
-  background: linear-gradient(135deg, var(--primary), var(--chart-1));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Glass effect */
-.glass {
-  background: var(--background) / 80%;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-/* Card hover effect */
-.card-hover {
-  transition: all 200ms ease;
-}
-
-.card-hover:hover {
-  background: var(--accent);
-}
-
-/* Active press effect */
-.press-effect:active {
-  transform: scale(0.97);
-}
-
-/* Modal overlay - uses theme-aware overlay color */
-.modal-overlay {
-  background-color: var(--overlay);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
