@@ -33,6 +33,19 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  // Pages merged or removed in the redesign keep working as bookmarks
+  async redirects() {
+    return [
+      { source: '/daily-log', destination: '/today', permanent: false },
+      { source: '/wellness', destination: '/today', permanent: false },
+      { source: '/reflections', destination: '/today', permanent: false },
+      { source: '/books', destination: '/learn', permanent: false },
+      { source: '/journals', destination: '/learn', permanent: false },
+      { source: '/skills', destination: '/learn', permanent: false },
+      { source: '/career', destination: '/dashboard', permanent: false },
+    ];
+  },
+
   // Improve build performance
   typescript: {
     // Handled by IDE/CI

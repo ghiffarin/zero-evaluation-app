@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { user: userData, token } = response.data;
     setAuthToken(token);
     setUser(userData as User);
-    router.push('/dashboard');
+    router.push('/today');
   };
 
   const register = async (data: { email: string; password: string; name: string; timezone?: string }) => {
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { user: userData, token } = response.data;
     setAuthToken(token);
     setUser(userData as User);
-    router.push('/dashboard');
+    router.push('/today');
   };
 
   const logout = () => {

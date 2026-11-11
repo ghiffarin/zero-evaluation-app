@@ -3,24 +3,19 @@ import type { NextRequest } from 'next/server';
 
 // Routes that require authentication
 const protectedRoutes = [
+  '/today',
   '/dashboard',
-  '/daily-log',
+  '/learn',
   '/ielts',
-  '/journals',
-  '/books',
-  '/skills',
+  '/quizzes',
   '/workouts',
-  '/wellness',
   '/financial',
-  '/reflections',
-  '/career',
-  '/masters-prep',
   '/goals',
   '/projects',
+  '/masters-prep',
+  '/reports',
   '/settings',
   '/export',
-  '/quizzes',
-  '/reports',
 ];
 
 // Routes that should redirect to dashboard if authenticated
@@ -47,13 +42,13 @@ export function proxy(request: NextRequest) {
 
   // Redirect authenticated users from auth routes to dashboard
   if (isAuthRoute && token) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(new URL('/today', request.url));
   }
 
   // Redirect root to dashboard or login based on auth
   if (pathname === '/') {
     if (token) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      return NextResponse.redirect(new URL('/today', request.url));
     } else {
       return NextResponse.redirect(new URL('/login', request.url));
     }

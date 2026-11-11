@@ -248,6 +248,7 @@ export const api = {
     get: (id: string) => api.get<unknown>(`/wellness/${id}`),
     create: (data: unknown) => api.post<unknown>('/wellness', data),
     update: (id: string, data: unknown) => api.put<unknown>(`/wellness/${id}`, data),
+    getByDate: (date: string) => api.get<unknown>(`/wellness/date/${date}`),
     upsertByDate: (date: string, data: unknown) => api.put<unknown>(`/wellness/date/${date}`, data),
     delete: (id: string) => api.delete<unknown>(`/wellness/${id}`),
     stats: () => api.get<unknown>('/wellness/stats'),
@@ -286,6 +287,8 @@ export const api = {
     list: (params?: { page?: number; limit?: number; type?: string }) =>
       api.paginated<unknown>('/reflections', params),
     get: (id: string) => api.get<unknown>(`/reflections/${id}`),
+    getByDate: (date: string) => api.get<unknown>(`/reflections/date/${date}`),
+    upsertByDate: (date: string, data: unknown) => api.put<unknown>(`/reflections/date/${date}`, data),
     create: (data: unknown) => api.post<unknown>('/reflections', data),
     update: (id: string, data: unknown) => api.put<unknown>(`/reflections/${id}`, data),
     delete: (id: string) => api.delete<unknown>(`/reflections/${id}`),
