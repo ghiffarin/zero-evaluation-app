@@ -123,13 +123,13 @@ const MISTAKE_CATEGORIES = [
 // Theme-aware tooltip styles
 const getTooltipStyles = (isDark: boolean) => ({
   contentStyle: {
-    backgroundColor: isDark ? 'hsl(0 0% 12%)' : '#ffffff',
-    border: `1px solid ${isDark ? 'hsl(0 0% 22%)' : '#e5e7eb'}`,
+    backgroundColor: isDark ? 'var(--popover)' : 'var(--popover)',
+    border: `1px solid ${isDark ? 'var(--foreground)' : 'var(--foreground)'}`,
     borderRadius: '8px',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
   },
-  labelStyle: { color: isDark ? '#f5f5f5' : '#111827', fontWeight: 600 },
-  itemStyle: { color: isDark ? '#d4d4d4' : '#374151' },
+  labelStyle: { color: isDark ? 'var(--popover-foreground)' : 'var(--popover-foreground)', fontWeight: 600 },
+  itemStyle: { color: isDark ? 'var(--popover-foreground)' : 'var(--popover-foreground)' },
 });
 
 // Theme-aware chart colors
@@ -140,17 +140,17 @@ const getChartColors = (isDark: boolean) => ({
 
 // Chart color palette for skills
 const SKILL_CHART_COLORS = {
-  listening: '#3b82f6',    // blue
-  reading: '#10b981',      // green
-  writing_task1: '#f59e0b', // amber
-  writing_task2: '#f97316', // orange
-  speaking: '#8b5cf6',     // purple
+  listening: 'var(--chart-2)',    // blue
+  reading: 'var(--chart-3)',      // green
+  writing_task1: 'var(--chart-2)', // amber
+  writing_task2: 'var(--chart-2)', // orange
+  speaking: 'var(--chart-1)',     // purple
 };
 
 // Mistake category colors
 const MISTAKE_CATEGORY_COLORS = [
-  '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e',
-  '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6',
+  'var(--chart-1)', 'var(--chart-2)', 'var(--chart-2)', 'var(--chart-5)', 'var(--chart-3)',
+  'var(--chart-4)', 'var(--chart-4)', 'var(--chart-2)', 'var(--chart-1)',
 ];
 
 export default function IeltsPage() {
@@ -293,8 +293,8 @@ export default function IeltsPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="IELTS Practice"
-        description="Track your IELTS preparation progress"
+        title="IELTS"
+        description="Band scores, mistakes and vocabulary."
         actions={
           <Button onClick={() => {
             setEditingSession(null);

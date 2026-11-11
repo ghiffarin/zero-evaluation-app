@@ -255,8 +255,8 @@ export default function ExportPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Export & Import Data"
-        description="Transfer your data between devices or create backups"
+        title="Transfer data"
+        description="Back up your data or move it between devices."
       />
 
       <div className="space-y-6 max-w-4xl">

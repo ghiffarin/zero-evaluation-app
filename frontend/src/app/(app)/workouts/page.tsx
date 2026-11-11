@@ -218,13 +218,13 @@ const METRICS_BY_TYPE: Record<string, {
 // Theme-aware tooltip styles
 const getTooltipStyles = (isDark: boolean) => ({
   contentStyle: {
-    backgroundColor: isDark ? 'hsl(0 0% 12%)' : '#ffffff',
-    border: `1px solid ${isDark ? 'hsl(0 0% 22%)' : '#e5e7eb'}`,
+    backgroundColor: isDark ? 'var(--popover)' : 'var(--popover)',
+    border: `1px solid ${isDark ? 'var(--foreground)' : 'var(--foreground)'}`,
     borderRadius: '8px',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
   },
-  labelStyle: { color: isDark ? '#f5f5f5' : '#111827', fontWeight: 600 },
-  itemStyle: { color: isDark ? '#d4d4d4' : '#374151' },
+  labelStyle: { color: isDark ? 'var(--popover-foreground)' : 'var(--popover-foreground)', fontWeight: 600 },
+  itemStyle: { color: isDark ? 'var(--popover-foreground)' : 'var(--popover-foreground)' },
 });
 
 // Theme-aware chart colors
@@ -235,16 +235,16 @@ const getChartColors = (isDark: boolean) => ({
 
 // Workout type chart colors
 const WORKOUT_TYPE_COLORS: Record<string, string> = {
-  jogging: '#ef4444',    // red
-  walking: '#22c55e',    // green
-  strength: '#3b82f6',   // blue
-  hiit: '#f97316',       // orange
-  swimming: '#06b6d4',   // cyan
-  cycling: '#8b5cf6',    // purple
-  stretching: '#ec4899', // pink
-  yoga: '#14b8a6',       // teal
-  sports: '#eab308',     // yellow
-  other: '#6b7280',      // gray
+  jogging: 'var(--chart-1)',    // red
+  walking: 'var(--chart-3)',    // green
+  strength: 'var(--chart-2)',   // blue
+  hiit: 'var(--chart-2)',       // orange
+  swimming: 'var(--chart-4)',   // cyan
+  cycling: 'var(--chart-1)',    // purple
+  stretching: 'var(--chart-4)', // pink
+  yoga: 'var(--chart-4)',       // teal
+  sports: 'var(--chart-3)',     // yellow
+  other: 'var(--chart-3)',      // gray
 };
 
 export default function WorkoutsPage() {
@@ -442,7 +442,7 @@ export default function WorkoutsPage() {
     <PageContainer>
       <PageHeader
         title="Workouts"
-        description="Track your fitness activities with detailed metrics"
+        description="Training sessions and how they add up."
         actions={
           <Button
             onClick={() => {
@@ -649,7 +649,7 @@ export default function WorkoutsPage() {
                               name: WORKOUT_TYPES.find(t => t.value === type)?.label || type,
                               value: data.totalMinutes,
                               hours: Math.round(data.totalMinutes / 60 * 10) / 10,
-                              color: WORKOUT_TYPE_COLORS[type] || '#6b7280',
+                              color: WORKOUT_TYPE_COLORS[type] || 'var(--chart-3)',
                             }))}
                           cx="50%"
                           cy="50%"
@@ -662,7 +662,7 @@ export default function WorkoutsPage() {
                             .filter(([_, data]) => data.totalMinutes > 0)
                             .slice(0, 6)
                             .map(([type], index) => (
-                              <Cell key={`cell-${index}`} fill={WORKOUT_TYPE_COLORS[type] || '#6b7280'} />
+                              <Cell key={`cell-${index}`} fill={WORKOUT_TYPE_COLORS[type] || 'var(--chart-3)'} />
                             ))}
                         </Pie>
                         <Tooltip
@@ -710,7 +710,7 @@ export default function WorkoutsPage() {
                                 className="h-full rounded-full transition-all"
                                 style={{
                                   width: `${percentage}%`,
-                                  backgroundColor: WORKOUT_TYPE_COLORS[type] || '#6b7280',
+                                  backgroundColor: WORKOUT_TYPE_COLORS[type] || 'var(--chart-3)',
                                 }}
                               />
                             </div>

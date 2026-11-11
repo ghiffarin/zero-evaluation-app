@@ -249,7 +249,7 @@ export default function GoalsPage() {
     <PageContainer>
       <PageHeader
         title="Goals"
-        description="Set and track your personal goals with progress tracking"
+        description="What you are working towards."
         actions={
           <Button
             onClick={() => {

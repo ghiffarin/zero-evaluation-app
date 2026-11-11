@@ -541,8 +541,8 @@ export default function MastersPrepPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Master's Prep"
-        description="Track your master's degree preparation progress"
+        title="Master's prep"
+        description="Universities, scholarships and applications."
         actions={
           <div className="flex gap-2">
             <Button

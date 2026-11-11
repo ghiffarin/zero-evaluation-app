@@ -232,7 +232,7 @@ export default function ProjectsPage() {
     <PageContainer>
       <PageHeader
         title="Projects"
-        description="Manage your personal and professional projects"
+        description="Work in progress, personal and professional."
         actions={
           <Button
             onClick={() => {

@@ -164,7 +164,7 @@ export default function QuizzesPage() {
     <PageContainer>
       <PageHeader
         title="Quizzes"
-        description="Practice and test your knowledge"
+        description="Timed reasoning tests and your results."
         actions={
           <div className="flex gap-2">
             <button

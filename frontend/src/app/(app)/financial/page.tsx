@@ -13,7 +13,6 @@ import {
   Progress,
   Label,
   Select,
-  Textarea,
 } from '@/components/ui';
 import {
   Plus,
@@ -48,19 +47,8 @@ import {
   Building,
   BarChart3,
   List,
-  Shield,
   AlertTriangle,
   CheckCircle,
-  Package,
-  Calendar,
-  Clock,
-  Clipboard,
-  AlertCircle,
-  Zap,
-  Cloud,
-  Wrench,
-  Play,
-  Check,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
@@ -77,20 +65,6 @@ import {
   Legend,
 } from 'recharts';
 import type {
-  SafetyKit,
-  SafetyKitItem,
-  KitCheck,
-  Incident,
-  SafetyKitStats,
-  ReadinessOverview,
-  RestockReminders,
-  SafetyKitLocation,
-  SafetyItemCategory,
-  SafetyItemPriority,
-  SafetyItemStatus,
-  KitCheckType,
-  IncidentType,
-  IncidentSeverity,
   Budget,
   BudgetStats,
   BudgetComparison,
@@ -186,68 +160,18 @@ const INVESTMENT_TYPES = [
 ] as const;
 
 // =================================================================
-// Safety Kit Constants
-// =================================================================
-
-const LOCATIONS: { value: SafetyKitLocation; label: string; icon: React.ElementType }[] = [
-  { value: 'kost', label: 'Kost', icon: Building },
-  { value: 'home', label: 'Home', icon: Home },
-  { value: 'motorbag', label: 'Motorbag', icon: Briefcase },
-];
-
-const SAFETY_CATEGORIES: { value: SafetyItemCategory; label: string; icon: React.ElementType }[] = [
-  { value: 'health', label: 'Health', icon: Heart },
-  { value: 'power', label: 'Power', icon: Zap },
-  { value: 'weather', label: 'Weather', icon: Cloud },
-  { value: 'safety', label: 'Safety', icon: Shield },
-  { value: 'tools', label: 'Tools', icon: Wrench },
-];
-
-const PRIORITIES: { value: SafetyItemPriority; label: string; weight: number; color: string }[] = [
-  { value: 'critical', label: 'Critical', weight: 3, color: 'text-red-500' },
-  { value: 'high', label: 'High', weight: 2, color: 'text-orange-500' },
-  { value: 'normal', label: 'Normal', weight: 1, color: 'text-blue-500' },
-];
-
-const STATUSES: { value: SafetyItemStatus; label: string; color: string; variant: 'success' | 'warning' | 'error' | 'neutral' }[] = [
-  { value: 'ok', label: 'OK', color: 'text-green-500', variant: 'success' },
-  { value: 'low', label: 'Low', color: 'text-yellow-500', variant: 'warning' },
-  { value: 'out', label: 'Out', color: 'text-red-500', variant: 'error' },
-  { value: 'replace', label: 'Replace', color: 'text-orange-500', variant: 'warning' },
-];
-
-const CHECK_TYPES: { value: KitCheckType; label: string }[] = [
-  { value: 'weekly', label: 'Weekly Routine' },
-  { value: 'before_trip', label: 'Before Trip' },
-];
-
-const INCIDENT_TYPES: { value: IncidentType; label: string }[] = [
-  { value: 'health', label: 'Health Issue' },
-  { value: 'weather', label: 'Weather Related' },
-  { value: 'power', label: 'Power Outage' },
-  { value: 'safety', label: 'Safety Issue' },
-  { value: 'transport', label: 'Transport Issue' },
-];
-
-const SEVERITIES: { value: IncidentSeverity; label: string; variant: 'success' | 'warning' | 'error' }[] = [
-  { value: 'low', label: 'Low', variant: 'success' },
-  { value: 'med', label: 'Medium', variant: 'warning' },
-  { value: 'high', label: 'High', variant: 'error' },
-];
-
-// =================================================================
 // Theme & Chart Utilities
 // =================================================================
 
 const getTooltipStyles = (isDark: boolean) => ({
   contentStyle: {
-    backgroundColor: isDark ? 'hsl(0 0% 12%)' : '#ffffff',
-    border: `1px solid ${isDark ? 'hsl(0 0% 22%)' : '#e5e7eb'}`,
+    backgroundColor: isDark ? 'var(--popover)' : 'var(--popover)',
+    border: `1px solid ${isDark ? 'var(--foreground)' : 'var(--foreground)'}`,
     borderRadius: '8px',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
   },
-  labelStyle: { color: isDark ? '#f5f5f5' : '#111827', fontWeight: 600 },
-  itemStyle: { color: isDark ? '#d4d4d4' : '#374151' },
+  labelStyle: { color: isDark ? 'var(--popover-foreground)' : 'var(--popover-foreground)', fontWeight: 600 },
+  itemStyle: { color: isDark ? 'var(--popover-foreground)' : 'var(--popover-foreground)' },
 });
 
 const getChartColors = (isDark: boolean) => ({
@@ -256,11 +180,11 @@ const getChartColors = (isDark: boolean) => ({
 });
 
 const FINANCIAL_COLORS = {
-  income: '#10b981',
-  spending: '#ef4444',
-  investment: '#3b82f6',
-  necessary: '#22c55e',
-  unnecessary: '#f97316',
+  income: 'var(--chart-3)',
+  spending: 'var(--chart-1)',
+  investment: 'var(--chart-2)',
+  necessary: 'var(--chart-3)',
+  unnecessary: 'var(--chart-2)',
 };
 
 // =================================================================
@@ -348,8 +272,8 @@ export default function FinancialPage() {
   const tooltipStyles = getTooltipStyles(isDark);
   const chartColors = getChartColors(isDark);
 
-  // View mode toggle: analytics, log, budget, or safety-kit
-  const [viewMode, setViewMode] = React.useState<'analytics' | 'log' | 'budget' | 'safety-kit'>('analytics');
+  // View mode toggle: analytics, log or budget
+  const [viewMode, setViewMode] = React.useState<'analytics' | 'log' | 'budget'>('analytics');
 
   // Financial state
   const [transactions, setTransactions] = React.useState<FinancialTransaction[]>([]);
@@ -361,33 +285,6 @@ export default function FinancialPage() {
   const [filterCategory, setFilterCategory] = React.useState<string>('all');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [expandedTransaction, setExpandedTransaction] = React.useState<string | null>(null);
-
-  // Safety Kit state
-  const [safetyStats, setSafetyStats] = React.useState<SafetyKitStats | null>(null);
-  const [readiness, setReadiness] = React.useState<ReadinessOverview[]>([]);
-  const [reminders, setReminders] = React.useState<RestockReminders | null>(null);
-  const [kits, setKits] = React.useState<SafetyKit[]>([]);
-  const [checks, setChecks] = React.useState<KitCheck[]>([]);
-  const [incidents, setIncidents] = React.useState<Incident[]>([]);
-  const [safetyLoading, setSafetyLoading] = React.useState(true);
-  const [showKitModal, setShowKitModal] = React.useState(false);
-  const [showItemModal, setShowItemModal] = React.useState(false);
-  const [showCheckModal, setShowCheckModal] = React.useState(false);
-  const [showIncidentModal, setShowIncidentModal] = React.useState(false);
-  const [editingKit, setEditingKit] = React.useState<SafetyKit | null>(null);
-  const [editingItem, setEditingItem] = React.useState<SafetyKitItem | null>(null);
-  const [activeKitId, setActiveKitId] = React.useState<string | null>(null);
-  const [editingIncident, setEditingIncident] = React.useState<Incident | null>(null);
-  const [activeCheck, setActiveCheck] = React.useState<KitCheck | null>(null);
-  const [checkLines, setCheckLines] = React.useState<Array<{
-    safetyKitItemId: string;
-    statusFound: SafetyItemStatus;
-    quantityFound: number;
-    isOk: boolean;
-    notes: string;
-  }>>([]);
-  const [expandedKits, setExpandedKits] = React.useState<Set<string>>(new Set());
-  const [safetySubView, setSafetySubView] = React.useState<'overview' | 'kits' | 'checks' | 'incidents'>('overview');
 
   // Budget state
   const [budgets, setBudgets] = React.useState<Budget[]>([]);
@@ -420,40 +317,6 @@ export default function FinancialPage() {
 
     fetchFinancialData();
   }, [authLoading, isAuthenticated]);
-
-  // Fetch Safety Kit Data
-  const fetchSafetyData = React.useCallback(async () => {
-    if (authLoading || !isAuthenticated) return;
-
-    try {
-      setSafetyLoading(true);
-      const [statsRes, readinessRes, remindersRes, kitsRes, checksRes, incidentsRes] = await Promise.all([
-        api.safetyKit.stats(),
-        api.safetyKit.readiness(),
-        api.safetyKit.restock(),
-        api.safetyKit.kits.list(),
-        api.safetyKit.checks.list({ limit: 10 }),
-        api.safetyKit.incidents.list({ limit: 10 }),
-      ]);
-
-      setSafetyStats(statsRes.data as SafetyKitStats);
-      setReadiness(readinessRes.data as ReadinessOverview[]);
-      setReminders(remindersRes.data as RestockReminders);
-      setKits(kitsRes.data as SafetyKit[]);
-      setChecks((checksRes as any).data as KitCheck[]);
-      setIncidents((incidentsRes as any).data as Incident[]);
-    } catch (error) {
-      console.error('Failed to fetch safety data:', error);
-    } finally {
-      setSafetyLoading(false);
-    }
-  }, [authLoading, isAuthenticated]);
-
-  React.useEffect(() => {
-    if (viewMode === 'safety-kit') {
-      fetchSafetyData();
-    }
-  }, [viewMode, fetchSafetyData]);
 
   // Fetch Budget Data
   const fetchBudgetData = React.useCallback(async () => {
@@ -523,138 +386,6 @@ export default function FinancialPage() {
     }
   };
 
-  // Safety Kit CRUD handlers
-  const handleSaveKit = async (data: Partial<SafetyKit>) => {
-    try {
-      if (editingKit) {
-        await api.safetyKit.kits.update(editingKit.id, data);
-      } else {
-        await api.safetyKit.kits.create(data);
-      }
-      setShowKitModal(false);
-      setEditingKit(null);
-      fetchSafetyData();
-    } catch (error) {
-      console.error('Failed to save kit:', error);
-    }
-  };
-
-  const handleDeleteKit = async (id: string) => {
-    if (!confirm('Delete this kit and all its items?')) return;
-    try {
-      await api.safetyKit.kits.delete(id);
-      fetchSafetyData();
-    } catch (error) {
-      console.error('Failed to delete kit:', error);
-    }
-  };
-
-  const handleSaveItem = async (data: Partial<SafetyKitItem>) => {
-    try {
-      if (editingItem) {
-        await api.safetyKit.items.update(editingItem.id, data);
-      } else if (activeKitId) {
-        await api.safetyKit.items.create(activeKitId, data);
-      }
-      setShowItemModal(false);
-      setEditingItem(null);
-      setActiveKitId(null);
-      fetchSafetyData();
-    } catch (error) {
-      console.error('Failed to save item:', error);
-    }
-  };
-
-  const handleDeleteItem = async (id: string) => {
-    if (!confirm('Delete this item?')) return;
-    try {
-      await api.safetyKit.items.delete(id);
-      fetchSafetyData();
-    } catch (error) {
-      console.error('Failed to delete item:', error);
-    }
-  };
-
-  const handleStartCheck = async (kitId: string) => {
-    try {
-      const res = await api.safetyKit.checks.create({
-        safetyKitId: kitId,
-        date: toLocalDateString(new Date()),
-        checkType: 'weekly',
-      });
-      const check = (res.data as any);
-      const fullCheckRes = await api.safetyKit.checks.get(check.id);
-      const fullCheck = fullCheckRes.data as KitCheck;
-      setActiveCheck(fullCheck);
-
-      const items = (fullCheck as any).safetyKit?.items || [];
-      setCheckLines(items.map((item: SafetyKitItem) => ({
-        safetyKitItemId: item.id,
-        statusFound: item.status,
-        quantityFound: item.quantity,
-        isOk: item.status === 'ok',
-        notes: '',
-      })));
-
-      setShowCheckModal(true);
-    } catch (error) {
-      console.error('Failed to start check:', error);
-    }
-  };
-
-  const handleCompleteCheck = async () => {
-    if (!activeCheck) return;
-    try {
-      await api.safetyKit.checks.complete(activeCheck.id, {
-        lines: checkLines,
-        duration: 5,
-      });
-      setShowCheckModal(false);
-      setActiveCheck(null);
-      setCheckLines([]);
-      fetchSafetyData();
-    } catch (error) {
-      console.error('Failed to complete check:', error);
-    }
-  };
-
-  const handleSaveIncident = async (data: Partial<Incident>) => {
-    try {
-      if (editingIncident) {
-        await api.safetyKit.incidents.update(editingIncident.id, data);
-      } else {
-        await api.safetyKit.incidents.create(data);
-      }
-      setShowIncidentModal(false);
-      setEditingIncident(null);
-      fetchSafetyData();
-    } catch (error) {
-      console.error('Failed to save incident:', error);
-    }
-  };
-
-  const handleDeleteIncident = async (id: string) => {
-    if (!confirm('Delete this incident?')) return;
-    try {
-      await api.safetyKit.incidents.delete(id);
-      fetchSafetyData();
-    } catch (error) {
-      console.error('Failed to delete incident:', error);
-    }
-  };
-
-  const toggleKitExpanded = (kitId: string) => {
-    setExpandedKits(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(kitId)) {
-        newSet.delete(kitId);
-      } else {
-        newSet.add(kitId);
-      }
-      return newSet;
-    });
-  };
-
   // Budget CRUD handlers
   const handleCreateBudget = async (data: Partial<Budget>) => {
     try {
@@ -705,7 +436,14 @@ export default function FinancialPage() {
         .slice(0, 5)
     : [];
 
-  const loading = viewMode === 'safety-kit' ? safetyLoading : viewMode === 'budget' ? budgetLoading : financialLoading;
+  const loading = viewMode === 'budget' ? budgetLoading : financialLoading;
+
+  // Shares of total spending; untagged spending is neither necessary nor not
+  const totalSpent = stats?.summary.totalSpending ?? 0;
+  const shareOfSpending = (amount: number) => (totalSpent > 0 ? (amount / totalSpent) * 100 : 0);
+  const untaggedSpending = stats
+    ? Math.max(0, totalSpent - stats.spending.necessary - stats.spending.unnecessary)
+    : 0;
 
   if (loading) {
     return (
@@ -751,8 +489,8 @@ export default function FinancialPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Financial"
-        description="Track your income, expenses, investments, and emergency preparedness"
+        title="Money"
+        description="Spending, income and budgets."
         actions={getHeaderAction()}
       />
 
@@ -792,17 +530,6 @@ export default function FinancialPage() {
             <Wallet className="h-4 w-4" />
             Budget
           </button>
-          <button
-            onClick={() => setViewMode('safety-kit')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'safety-kit'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Shield className="h-4 w-4" />
-            Safety Kit
-          </button>
         </div>
       </div>
 
@@ -831,11 +558,13 @@ export default function FinancialPage() {
                   icon={<PiggyBank className="h-5 w-5" />}
                   variant="info"
                 />
+                {/* Income minus spending for the period. Not net worth: the app
+                    does not know balances, and investments are transfers. */}
                 <StatCard
-                  label="Net Worth"
-                  value={formatCurrency(stats.summary.netWorth)}
+                  label="Net cash flow"
+                  value={formatCurrency(stats.summary.totalIncome - stats.summary.totalSpending)}
                   icon={<Wallet className="h-5 w-5" />}
-                  variant={stats.summary.netWorth >= 0 ? 'success' : 'error'}
+                  variant={stats.summary.totalIncome - stats.summary.totalSpending >= 0 ? 'success' : 'error'}
                 />
               </div>
 
@@ -856,20 +585,26 @@ export default function FinancialPage() {
                         <div className="flex justify-between text-sm mb-1">
                           <span>Necessary</span>
                           <span className="text-muted-foreground">
-                            {formatCurrency(stats.spending.necessary)} ({stats.spending.necessaryPercentage.toFixed(0)}%)
+                            {formatCurrency(stats.spending.necessary)} ({shareOfSpending(stats.spending.necessary).toFixed(0)}%)
                           </span>
                         </div>
-                        <Progress value={stats.spending.necessaryPercentage} className="h-2" />
+                        <Progress value={shareOfSpending(stats.spending.necessary)} />
                       </div>
                       <div>
                         <div className="flex justify-between text-sm mb-1">
                           <span>Unnecessary</span>
                           <span className="text-muted-foreground">
-                            {formatCurrency(stats.spending.unnecessary)} ({(100 - stats.spending.necessaryPercentage).toFixed(0)}%)
+                            {formatCurrency(stats.spending.unnecessary)} ({shareOfSpending(stats.spending.unnecessary).toFixed(0)}%)
                           </span>
                         </div>
-                        <Progress value={100 - stats.spending.necessaryPercentage} className="h-2 [&>div]:bg-red-500" />
+                        <Progress value={shareOfSpending(stats.spending.unnecessary)} />
                       </div>
+                      {untaggedSpending > 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          {formatCurrency(untaggedSpending)} ({shareOfSpending(untaggedSpending).toFixed(0)}%) not tagged yet.
+                          Mark transactions as necessary or not to see the split.
+                        </p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1512,502 +1247,6 @@ export default function FinancialPage() {
         </>
       )}
 
-      {/* Safety Kit View */}
-      {viewMode === 'safety-kit' && (
-        <>
-          {/* Sub-navigation for Safety Kit */}
-          <div className="flex flex-wrap items-center gap-2 mb-6">
-            <Button
-              size="sm"
-              variant={safetySubView === 'overview' ? 'default' : 'outline'}
-              onClick={() => setSafetySubView('overview')}
-            >
-              <BarChart3 className="h-4 w-4 mr-1" /> Overview
-            </Button>
-            <Button
-              size="sm"
-              variant={safetySubView === 'kits' ? 'default' : 'outline'}
-              onClick={() => setSafetySubView('kits')}
-            >
-              <Package className="h-4 w-4 mr-1" /> Kits
-            </Button>
-            <Button
-              size="sm"
-              variant={safetySubView === 'checks' ? 'default' : 'outline'}
-              onClick={() => setSafetySubView('checks')}
-            >
-              <Clipboard className="h-4 w-4 mr-1" /> Checks
-            </Button>
-            <Button
-              size="sm"
-              variant={safetySubView === 'incidents' ? 'default' : 'outline'}
-              onClick={() => setSafetySubView('incidents')}
-            >
-              <AlertCircle className="h-4 w-4 mr-1" /> Incidents
-            </Button>
-          </div>
-
-          {/* Safety Kit Overview */}
-          {safetySubView === 'overview' && (
-            <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-blue-500/10">
-                        <Package className="h-5 w-5 text-blue-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Items</p>
-                        <p className="text-2xl font-semibold">{safetyStats?.kits.totalItems || 0}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-green-500/10">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Avg Readiness</p>
-                        <p className="text-2xl font-semibold">
-                          {safetyStats?.kits.avgReadiness !== null ? `${safetyStats?.kits.avgReadiness.toFixed(0)}%` : '-'}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-orange-500/10">
-                        <AlertTriangle className="h-5 w-5 text-orange-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Needs Attention</p>
-                        <p className="text-2xl font-semibold">{safetyStats?.kits.needsAttention || 0}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-red-500/10">
-                        <AlertCircle className="h-5 w-5 text-red-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Incidents</p>
-                        <p className="text-2xl font-semibold">{safetyStats?.incidents.total || 0}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <PageSection title="Kit Readiness" actions={
-                <Button size="sm" onClick={() => { setEditingKit(null); setShowKitModal(true); }}>
-                  <Plus className="h-4 w-4 mr-1" /> Add Kit
-                </Button>
-              }>
-                <div className="grid gap-4 md:grid-cols-3">
-                  {readiness.map(kit => (
-                    <Card key={kit.id}>
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-base flex items-center gap-2">
-                            {LOCATIONS.find(l => l.value === kit.location)?.icon &&
-                              React.createElement(LOCATIONS.find(l => l.value === kit.location)!.icon, { className: 'h-4 w-4' })}
-                            {kit.name}
-                          </CardTitle>
-                          <Badge variant={kit.readinessScore && kit.readinessScore >= 80 ? 'success' : kit.readinessScore && kit.readinessScore >= 50 ? 'warning' : 'error'}>
-                            {kit.readinessScore !== null ? `${kit.readinessScore.toFixed(0)}%` : 'N/A'}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <Progress value={kit.readinessScore || 0} className="mb-2" />
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                          <span>{kit.itemsReady} ready</span>
-                          <span>{kit.itemsIssue} issues</span>
-                        </div>
-                        {kit.lastCheckDate && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Last checked: {formatDate(kit.lastCheckDate)}
-                          </p>
-                        )}
-                        <div className="flex gap-2 mt-3">
-                          <Button size="sm" variant="outline" className="flex-1" onClick={() => handleStartCheck(kit.id)}>
-                            <Play className="h-3 w-3 mr-1" /> Check
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setSafetySubView('kits')}>
-                            View Items
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  {readiness.length === 0 && (
-                    <Card className="col-span-full">
-                      <CardContent className="p-8 text-center text-muted-foreground">
-                        <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>No safety kits yet. Create your first kit to get started.</p>
-                        <Button className="mt-4" onClick={() => { setEditingKit(null); setShowKitModal(true); }}>
-                          <Plus className="h-4 w-4 mr-1" /> Create Kit
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </PageSection>
-
-              {reminders && (reminders.restock.length > 0 || reminders.expiring.length > 0) && (
-                <PageSection title="Restock Reminders">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {reminders.restock.length > 0 && (
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4 text-orange-500" />
-                            Items to Restock ({reminders.restock.length})
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            {reminders.restock.slice(0, 5).map(item => (
-                              <div key={item.id} className="flex items-center justify-between text-sm">
-                                <span>{item.name}</span>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant={STATUSES.find(s => s.value === item.status)?.variant || 'neutral'}>
-                                    {STATUSES.find(s => s.value === item.status)?.label}
-                                  </Badge>
-                                  <span className="text-muted-foreground">{item.kitLocation}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          {reminders.summary.estimatedCost > 0 && (
-                            <p className="text-sm text-muted-foreground mt-3">
-                              Estimated cost: {formatCurrency(reminders.summary.estimatedCost)}
-                            </p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {reminders.expiring.length > 0 && (
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-red-500" />
-                            Expiring Soon ({reminders.expiring.length})
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            {reminders.expiring.slice(0, 5).map(item => (
-                              <div key={item.id} className="flex items-center justify-between text-sm">
-                                <span>{item.name}</span>
-                                <span className="text-muted-foreground">
-                                  {item.expiryDate ? formatDate(item.expiryDate) : '-'}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
-                </PageSection>
-              )}
-
-              {checks.length > 0 && (
-                <PageSection title="Recent Checks" actions={
-                  <Button size="sm" variant="ghost" onClick={() => setSafetySubView('checks')}>
-                    View All
-                  </Button>
-                }>
-                  <div className="space-y-2">
-                    {checks.slice(0, 5).map(check => (
-                      <div key={check.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                        <div className="flex items-center gap-3">
-                          <Clipboard className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="font-medium">{check.safetyKit?.name || 'Unknown Kit'}</p>
-                            <p className="text-sm text-muted-foreground">{formatDate(check.date)}</p>
-                          </div>
-                        </div>
-                        <Badge variant={check.readinessScore && check.readinessScore >= 80 ? 'success' : check.readinessScore && check.readinessScore >= 50 ? 'warning' : 'error'}>
-                          {check.readinessScore !== null ? `${check.readinessScore.toFixed(0)}%` : 'N/A'}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </PageSection>
-              )}
-            </>
-          )}
-
-          {/* Safety Kit Kits View */}
-          {safetySubView === 'kits' && (
-            <PageSection
-              title="Safety Kits"
-              actions={
-                <Button size="sm" onClick={() => { setEditingKit(null); setShowKitModal(true); }}>
-                  <Plus className="h-4 w-4 mr-1" /> Add Kit
-                </Button>
-              }
-            >
-              <div className="space-y-4">
-                {kits.map(kit => (
-                  <Card key={kit.id}>
-                    <CardHeader className="cursor-pointer" onClick={() => toggleKitExpanded(kit.id)}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          {React.createElement(LOCATIONS.find(l => l.value === kit.location)?.icon || Shield, { className: 'h-5 w-5' })}
-                          <div>
-                            <CardTitle className="text-lg">{kit.name}</CardTitle>
-                            <p className="text-sm text-muted-foreground capitalize">{kit.location}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={kit.isActive ? 'success' : 'neutral'}>
-                            {kit.isActive ? 'Active' : 'Inactive'}
-                          </Badge>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={(e) => { e.stopPropagation(); setEditingKit(kit); setShowKitModal(true); }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={(e) => { e.stopPropagation(); handleDeleteKit(kit.id); }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                          {expandedKits.has(kit.id) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </div>
-                      </div>
-                    </CardHeader>
-
-                    {expandedKits.has(kit.id) && (
-                      <CardContent>
-                        <div className="flex justify-between items-center mb-4">
-                          <p className="text-sm text-muted-foreground">{kit.items?.length || 0} items</p>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline" onClick={() => handleStartCheck(kit.id)}>
-                              <Play className="h-3 w-3 mr-1" /> Start Check
-                            </Button>
-                            <Button size="sm" onClick={() => { setActiveKitId(kit.id); setEditingItem(null); setShowItemModal(true); }}>
-                              <Plus className="h-3 w-3 mr-1" /> Add Item
-                            </Button>
-                          </div>
-                        </div>
-
-                        {kit.items && kit.items.length > 0 ? (
-                          <div className="space-y-2">
-                            {kit.items.map(item => (
-                              <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border">
-                                <div className="flex items-center gap-3">
-                                  {React.createElement(SAFETY_CATEGORIES.find(c => c.value === item.category)?.icon || Package, { className: 'h-4 w-4 text-muted-foreground' })}
-                                  <div>
-                                    <p className="font-medium">{item.name}</p>
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                      <span className="capitalize">{item.category}</span>
-                                      <span>·</span>
-                                      <span>{item.quantity} {item.unit || 'pcs'}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant={PRIORITIES.find(p => p.value === item.priority)?.value === 'critical' ? 'error' : PRIORITIES.find(p => p.value === item.priority)?.value === 'high' ? 'warning' : 'info'}>
-                                    {PRIORITIES.find(p => p.value === item.priority)?.label}
-                                  </Badge>
-                                  <Badge variant={STATUSES.find(s => s.value === item.status)?.variant || 'neutral'}>
-                                    {STATUSES.find(s => s.value === item.status)?.label}
-                                  </Badge>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    onClick={() => { setActiveKitId(kit.id); setEditingItem(item); setShowItemModal(true); }}
-                                  >
-                                    <Edit className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    onClick={() => handleDeleteItem(item.id)}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-center text-muted-foreground py-4">
-                            No items yet. Add items to start tracking.
-                          </p>
-                        )}
-                      </CardContent>
-                    )}
-                  </Card>
-                ))}
-
-                {kits.length === 0 && (
-                  <Card>
-                    <CardContent className="p-8 text-center text-muted-foreground">
-                      <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No safety kits yet. Create your first kit to get started.</p>
-                      <Button className="mt-4" onClick={() => { setEditingKit(null); setShowKitModal(true); }}>
-                        <Plus className="h-4 w-4 mr-1" /> Create Kit
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </PageSection>
-          )}
-
-          {/* Safety Kit Checks View */}
-          {safetySubView === 'checks' && (
-            <PageSection title="Check History">
-              <div className="space-y-2">
-                {checks.map(check => (
-                  <Card key={check.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Clipboard className="h-5 w-5 text-muted-foreground" />
-                          <div>
-                            <p className="font-medium">{check.safetyKit?.name || 'Unknown Kit'}</p>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <span>{formatDate(check.date)}</span>
-                              <span>·</span>
-                              <span className="capitalize">{check.checkType.replace('_', ' ')}</span>
-                              {check.duration && (
-                                <>
-                                  <span>·</span>
-                                  <span>{check.duration} min</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <Badge variant={check.readinessScore && check.readinessScore >= 80 ? 'success' : check.readinessScore && check.readinessScore >= 50 ? 'warning' : 'error'}>
-                              {check.readinessScore !== null ? `${check.readinessScore.toFixed(0)}%` : 'N/A'}
-                            </Badge>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {check.itemsReady}/{check.totalItems} ready
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-
-                {checks.length === 0 && (
-                  <Card>
-                    <CardContent className="p-8 text-center text-muted-foreground">
-                      <Clipboard className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No checks yet. Start a check from the overview or kits view.</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </PageSection>
-          )}
-
-          {/* Safety Kit Incidents View */}
-          {safetySubView === 'incidents' && (
-            <PageSection
-              title="Incident Log"
-              actions={
-                <Button size="sm" onClick={() => { setEditingIncident(null); setShowIncidentModal(true); }}>
-                  <Plus className="h-4 w-4 mr-1" /> Log Incident
-                </Button>
-              }
-            >
-              <div className="space-y-2">
-                {incidents.map(incident => (
-                  <Card key={incident.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <AlertCircle className={`h-5 w-5 ${SEVERITIES.find(s => s.value === incident.severity)?.variant === 'error' ? 'text-red-500' : SEVERITIES.find(s => s.value === incident.severity)?.variant === 'warning' ? 'text-orange-500' : 'text-green-500'}`} />
-                          <div>
-                            <p className="font-medium">{incident.title}</p>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <span>{formatDate(incident.date)}</span>
-                              <span>·</span>
-                              <span className="capitalize">{incident.incidentType}</span>
-                              {incident.location && (
-                                <>
-                                  <span>·</span>
-                                  <span>{incident.location}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={SEVERITIES.find(s => s.value === incident.severity)?.variant || 'neutral'}>
-                            {SEVERITIES.find(s => s.value === incident.severity)?.label}
-                          </Badge>
-                          {incident.wasKitUsed && <Badge variant="success">Kit Used</Badge>}
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => { setEditingIncident(incident); setShowIncidentModal(true); }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => handleDeleteIncident(incident.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      {incident.description && (
-                        <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
-                          {incident.description}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-
-                {incidents.length === 0 && (
-                  <Card>
-                    <CardContent className="p-8 text-center text-muted-foreground">
-                      <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No incidents logged yet. Log incidents when emergencies happen to track what items helped or were missing.</p>
-                      <Button className="mt-4" onClick={() => { setEditingIncident(null); setShowIncidentModal(true); }}>
-                        <Plus className="h-4 w-4 mr-1" /> Log Incident
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </PageSection>
-          )}
-        </>
-      )}
-
       {/* Transaction Modal */}
       {showModal && (
         <TransactionModal
@@ -2041,45 +1280,6 @@ export default function FinancialPage() {
               handleCreateBudget(data);
             }
           }}
-        />
-      )}
-
-      {/* Safety Kit Modals */}
-      {showKitModal && (
-        <KitModal
-          kit={editingKit}
-          onClose={() => { setShowKitModal(false); setEditingKit(null); }}
-          onSave={handleSaveKit}
-        />
-      )}
-
-      {showItemModal && (
-        <ItemModal
-          item={editingItem}
-          onClose={() => { setShowItemModal(false); setEditingItem(null); setActiveKitId(null); }}
-          onSave={handleSaveItem}
-        />
-      )}
-
-      {showCheckModal && activeCheck && (
-        <CheckModal
-          check={activeCheck}
-          lines={checkLines}
-          onUpdateLine={(index, updates) => {
-            const newLines = [...checkLines];
-            newLines[index] = { ...newLines[index], ...updates };
-            setCheckLines(newLines);
-          }}
-          onClose={() => { setShowCheckModal(false); setActiveCheck(null); setCheckLines([]); }}
-          onComplete={handleCompleteCheck}
-        />
-      )}
-
-      {showIncidentModal && (
-        <IncidentModal
-          incident={editingIncident}
-          onClose={() => { setShowIncidentModal(false); setEditingIncident(null); }}
-          onSave={handleSaveIncident}
         />
       )}
     </PageContainer>
@@ -2607,499 +1807,6 @@ function TransactionModal({
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {transaction ? 'Update' : 'Add'} Transaction
             </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// =================================================================
-// Safety Kit Modal Components
-// =================================================================
-
-function KitModal({
-  kit,
-  onClose,
-  onSave,
-}: {
-  kit: SafetyKit | null;
-  onClose: () => void;
-  onSave: (data: Partial<SafetyKit>) => void;
-}) {
-  const [name, setName] = React.useState(kit?.name || '');
-  const [location, setLocation] = React.useState<SafetyKitLocation>(kit?.location || 'kost');
-  const [description, setDescription] = React.useState(kit?.description || '');
-  const [isActive, setIsActive] = React.useState(kit?.isActive ?? true);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave({ name, location, description: description || null, isActive });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
-      <div className="bg-background rounded-lg shadow-lg w-full max-w-md mx-4">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">{kit ? 'Edit Kit' : 'Create Kit'}</h2>
-          <Button variant="ghost" size="icon-sm" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          <div>
-            <Label htmlFor="name" required>Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Kost Emergency Kit"
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="location" required>Location</Label>
-            <Select
-              id="location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value as SafetyKitLocation)}
-            >
-              {LOCATIONS.map(loc => (
-                <option key={loc.value} value={loc.value}>{loc.label}</option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional description..."
-              rows={2}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="isActive"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-              className="rounded border"
-            />
-            <Label htmlFor="isActive">Active</Label>
-          </div>
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit">{kit ? 'Update' : 'Create'}</Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function ItemModal({
-  item,
-  onClose,
-  onSave,
-}: {
-  item: SafetyKitItem | null;
-  onClose: () => void;
-  onSave: (data: Partial<SafetyKitItem>) => void;
-}) {
-  const [name, setName] = React.useState(item?.name || '');
-  const [category, setCategory] = React.useState<SafetyItemCategory>(item?.category || 'health');
-  const [priority, setPriority] = React.useState<SafetyItemPriority>(item?.priority || 'normal');
-  const [status, setStatus] = React.useState<SafetyItemStatus>(item?.status || 'ok');
-  const [quantity, setQuantity] = React.useState(item?.quantity || 1);
-  const [minQuantity, setMinQuantity] = React.useState(item?.minQuantity || 1);
-  const [unit, setUnit] = React.useState(item?.unit || 'pcs');
-  const [estimatedPrice, setEstimatedPrice] = React.useState(item?.estimatedPrice || '');
-  const [notes, setNotes] = React.useState(item?.notes || '');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave({
-      name,
-      category,
-      priority,
-      status,
-      quantity,
-      minQuantity,
-      unit: unit || null,
-      estimatedPrice: estimatedPrice ? Number(estimatedPrice) : null,
-      notes: notes || null,
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
-      <div className="bg-background rounded-lg shadow-lg w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-background">
-          <h2 className="text-lg font-semibold">{item ? 'Edit Item' : 'Add Item'}</h2>
-          <Button variant="ghost" size="icon-sm" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          <div>
-            <Label htmlFor="itemName" required>Name</Label>
-            <Input
-              id="itemName"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., First aid kit"
-              required
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="category" required>Category</Label>
-              <Select
-                id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value as SafetyItemCategory)}
-              >
-                {SAFETY_CATEGORIES.map(cat => (
-                  <option key={cat.value} value={cat.value}>{cat.label}</option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="priority" required>Priority</Label>
-              <Select
-                id="priority"
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as SafetyItemPriority)}
-              >
-                {PRIORITIES.map(pri => (
-                  <option key={pri.value} value={pri.value}>{pri.label} (x{pri.weight})</option>
-                ))}
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="status" required>Status</Label>
-              <Select
-                id="status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as SafetyItemStatus)}
-              >
-                {STATUSES.map(stat => (
-                  <option key={stat.value} value={stat.value}>{stat.label}</option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="unit">Unit</Label>
-              <Input
-                id="unit"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                placeholder="pcs, bottle, set"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="quantity">Quantity</Label>
-              <Input
-                id="quantity"
-                type="number"
-                min={0}
-                value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="minQuantity">Min Quantity</Label>
-              <Input
-                id="minQuantity"
-                type="number"
-                min={1}
-                value={minQuantity}
-                onChange={(e) => setMinQuantity(Number(e.target.value))}
-              />
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="estimatedPrice">Estimated Price (IDR)</Label>
-            <Input
-              id="estimatedPrice"
-              type="number"
-              min={0}
-              value={estimatedPrice}
-              onChange={(e) => setEstimatedPrice(e.target.value)}
-              placeholder="0"
-            />
-          </div>
-          <div>
-            <Label htmlFor="itemNotes">Notes</Label>
-            <Textarea
-              id="itemNotes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional notes..."
-              rows={2}
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit">{item ? 'Update' : 'Add'}</Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function CheckModal({
-  check,
-  lines,
-  onUpdateLine,
-  onClose,
-  onComplete,
-}: {
-  check: KitCheck;
-  lines: Array<{
-    safetyKitItemId: string;
-    statusFound: SafetyItemStatus;
-    quantityFound: number;
-    isOk: boolean;
-    notes: string;
-  }>;
-  onUpdateLine: (index: number, updates: Partial<typeof lines[0]>) => void;
-  onClose: () => void;
-  onComplete: () => void;
-}) {
-  const items = (check as any).safetyKit?.items || [];
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
-      <div className="bg-background rounded-lg shadow-lg w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-background">
-          <div>
-            <h2 className="text-lg font-semibold">Kit Check: {(check as any).safetyKit?.name}</h2>
-            <p className="text-sm text-muted-foreground">Check each item and mark its status</p>
-          </div>
-          <Button variant="ghost" size="icon-sm" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="p-4 space-y-4">
-          {items.map((item: SafetyKitItem, index: number) => {
-            const line = lines[index];
-            if (!line) return null;
-
-            return (
-              <Card key={item.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <p className="font-medium">{item.name}</p>
-                        <Badge variant={PRIORITIES.find(p => p.value === item.priority)?.value === 'critical' ? 'error' : PRIORITIES.find(p => p.value === item.priority)?.value === 'high' ? 'warning' : 'info'}>
-                          {PRIORITIES.find(p => p.value === item.priority)?.label}
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <Label className="text-xs">Status</Label>
-                          <Select
-                            value={line.statusFound}
-                            onChange={(e) => {
-                              const status = e.target.value as SafetyItemStatus;
-                              onUpdateLine(index, {
-                                statusFound: status,
-                                isOk: status === 'ok',
-                              });
-                            }}
-                          >
-                            {STATUSES.map(s => (
-                              <option key={s.value} value={s.value}>{s.label}</option>
-                            ))}
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs">Quantity</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={line.quantityFound}
-                            onChange={(e) => onUpdateLine(index, { quantityFound: Number(e.target.value) })}
-                          />
-                        </div>
-                        <div className="flex items-end">
-                          <Button
-                            type="button"
-                            variant={line.isOk ? 'default' : 'outline'}
-                            className="w-full"
-                            onClick={() => onUpdateLine(index, { isOk: !line.isOk })}
-                          >
-                            {line.isOk ? <Check className="h-4 w-4 mr-1" /> : null}
-                            {line.isOk ? 'OK' : 'Mark OK'}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-        <div className="flex justify-end gap-2 p-4 border-t sticky bottom-0 bg-background">
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={onComplete}>
-            <CheckCircle className="h-4 w-4 mr-1" /> Complete Check
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function IncidentModal({
-  incident,
-  onClose,
-  onSave,
-}: {
-  incident: Incident | null;
-  onClose: () => void;
-  onSave: (data: Partial<Incident>) => void;
-}) {
-  const [title, setTitle] = React.useState(incident?.title || '');
-  const [date, setDate] = React.useState(incident?.date ? incident.date.split('T')[0] : toLocalDateString(new Date()));
-  const [incidentType, setIncidentType] = React.useState<IncidentType>(incident?.incidentType || 'health');
-  const [severity, setSeverity] = React.useState<IncidentSeverity>(incident?.severity || 'low');
-  const [description, setDescription] = React.useState(incident?.description || '');
-  const [location, setLocation] = React.useState(incident?.location || '');
-  const [wasKitUsed, setWasKitUsed] = React.useState(incident?.wasKitUsed ?? false);
-  const [kitHelpful, setKitHelpful] = React.useState(incident?.kitHelpful || 3);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave({
-      title,
-      date,
-      incidentType,
-      severity,
-      description,
-      location: location || null,
-      wasKitUsed,
-      kitHelpful: wasKitUsed ? kitHelpful : null,
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
-      <div className="bg-background rounded-lg shadow-lg w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-background">
-          <h2 className="text-lg font-semibold">{incident ? 'Edit Incident' : 'Log Incident'}</h2>
-          <Button variant="ghost" size="icon-sm" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          <div>
-            <Label htmlFor="incidentTitle" required>Title</Label>
-            <Input
-              id="incidentTitle"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Brief description of what happened"
-              required
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="incidentDate" required>Date</Label>
-              <Input
-                id="incidentDate"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="incidentLocation">Location</Label>
-              <Input
-                id="incidentLocation"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Where it happened"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="incidentType" required>Type</Label>
-              <Select
-                id="incidentType"
-                value={incidentType}
-                onChange={(e) => setIncidentType(e.target.value as IncidentType)}
-              >
-                {INCIDENT_TYPES.map(type => (
-                  <option key={type.value} value={type.value}>{type.label}</option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="severity" required>Severity</Label>
-              <Select
-                id="severity"
-                value={severity}
-                onChange={(e) => setSeverity(e.target.value as IncidentSeverity)}
-              >
-                {SEVERITIES.map(sev => (
-                  <option key={sev.value} value={sev.value}>{sev.label}</option>
-                ))}
-              </Select>
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="incidentDescription" required>Description</Label>
-            <Textarea
-              id="incidentDescription"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What happened and how it was resolved..."
-              rows={3}
-              required
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="wasKitUsed"
-              checked={wasKitUsed}
-              onChange={(e) => setWasKitUsed(e.target.checked)}
-              className="rounded border"
-            />
-            <Label htmlFor="wasKitUsed">Safety kit was used</Label>
-          </div>
-          {wasKitUsed && (
-            <div>
-              <Label htmlFor="kitHelpful">How helpful was the kit? (1-5)</Label>
-              <Select
-                id="kitHelpful"
-                value={kitHelpful.toString()}
-                onChange={(e) => setKitHelpful(Number(e.target.value))}
-              >
-                <option value="1">1 - Not helpful</option>
-                <option value="2">2 - Slightly helpful</option>
-                <option value="3">3 - Moderately helpful</option>
-                <option value="4">4 - Very helpful</option>
-                <option value="5">5 - Extremely helpful</option>
-              </Select>
-            </div>
-          )}
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit">{incident ? 'Update' : 'Log'}</Button>
           </div>
         </form>
       </div>

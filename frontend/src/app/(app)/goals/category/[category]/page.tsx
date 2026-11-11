@@ -112,7 +112,7 @@ const STATUSES = [
   { value: 'dropped', label: 'Dropped', icon: XCircle, color: 'text-red-500' },
 ] as const;
 
-const PIE_COLORS = ['#22c55e', '#3b82f6', '#6b7280', '#ef4444'];
+const PIE_COLORS = ['var(--chart-3)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-1)'];
 
 export default function CategoryPage() {
   const params = useParams();
@@ -250,10 +250,10 @@ export default function CategoryPage() {
 
   // Status distribution for pie chart
   const statusDistribution = React.useMemo(() => [
-    { name: 'Achieved', value: stats.achieved, color: '#22c55e' },
-    { name: 'In Progress', value: stats.inProgress, color: '#3b82f6' },
-    { name: 'Not Started', value: stats.notStarted, color: '#6b7280' },
-    { name: 'Dropped', value: stats.dropped, color: '#ef4444' },
+    { name: 'Achieved', value: stats.achieved, color: 'var(--chart-3)' },
+    { name: 'In Progress', value: stats.inProgress, color: 'var(--chart-2)' },
+    { name: 'Not Started', value: stats.notStarted, color: 'var(--chart-3)' },
+    { name: 'Dropped', value: stats.dropped, color: 'var(--chart-1)' },
   ].filter((d) => d.value > 0), [stats]);
 
   // Progress per goal for bar chart
@@ -335,12 +335,12 @@ export default function CategoryPage() {
   // Chart tooltip styles
   const tooltipStyles = {
     contentStyle: {
-      backgroundColor: isDark ? 'hsl(0 0% 12%)' : '#ffffff',
-      border: `1px solid ${isDark ? 'hsl(0 0% 22%)' : '#e5e7eb'}`,
+      backgroundColor: isDark ? 'var(--popover)' : 'var(--popover)',
+      border: `1px solid ${isDark ? 'var(--foreground)' : 'var(--foreground)'}`,
       borderRadius: '8px',
     },
-    labelStyle: { color: isDark ? '#f5f5f5' : '#111827', fontWeight: 600 },
-    itemStyle: { color: isDark ? '#d4d4d4' : '#374151' },
+    labelStyle: { color: isDark ? 'var(--popover-foreground)' : 'var(--popover-foreground)', fontWeight: 600 },
+    itemStyle: { color: isDark ? 'var(--popover-foreground)' : 'var(--popover-foreground)' },
   };
 
   const chartColors = {
@@ -521,9 +521,9 @@ export default function CategoryPage() {
                           <Cell
                             key={`cell-${index}`}
                             fill={
-                              entry.status === 'achieved' ? '#22c55e' :
-                              entry.status === 'in_progress' ? '#3b82f6' :
-                              '#6b7280'
+                              entry.status === 'achieved' ? 'var(--chart-3)' :
+                              entry.status === 'in_progress' ? 'var(--chart-2)' :
+                              'var(--chart-3)'
                             }
                           />
                         ))}
@@ -565,11 +565,11 @@ export default function CategoryPage() {
                         type="monotone"
                         dataKey="cumulative"
                         name="Cumulative"
-                        stroke="#3b82f6"
+                        stroke="var(--chart-2)"
                         strokeWidth={2}
                         dot={{ r: 3 }}
                       />
-                      <Bar dataKey="daily" name="Daily" fill="#10b981" />
+                      <Bar dataKey="daily" name="Daily" fill="var(--chart-3)" />
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (

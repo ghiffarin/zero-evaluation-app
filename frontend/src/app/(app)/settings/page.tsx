@@ -6,10 +6,12 @@ import { useAuth } from '@/contexts/auth-context';
 import { PageContainer, PageHeader } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Label, Select } from '@/components/ui';
 import { FileText, ChevronRight } from 'lucide-react';
+import { useTheme } from '@/contexts/theme-context';
 
 export default function SettingsPage() {
   const router = useRouter();
   const { user, updateProfile, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [name, setName] = React.useState(user?.name || '');
   const [timezone, setTimezone] = React.useState(user?.timezone || 'Asia/Jakarta');
   const [isLoading, setIsLoading] = React.useState(false);
@@ -32,7 +34,7 @@ export default function SettingsPage() {
 
   return (
     <PageContainer>
-      <PageHeader title="Settings" description="Manage your account settings" />
+      <PageHeader title="Settings" description="Account, appearance and data." />
 
       <div className="space-y-6 max-w-2xl">
         {/* Profile Settings */}
@@ -89,6 +91,31 @@ export default function SettingsPage() {
                 {isLoading ? 'Saving...' : 'Save Changes'}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Appearance */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Appearance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div role="radiogroup" aria-label="Theme" className="flex flex-wrap gap-2">
+              {(['light', 'dark', 'system'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  role="radio"
+                  aria-checked={theme === option}
+                  onClick={() => setTheme(option)}
+                  className={`h-9 rounded-full border border-foreground px-4 text-sm font-bold capitalize transition-colors ${
+                    theme === option ? 'bg-foreground text-background' : 'hover:bg-accent'
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
           </CardContent>
         </Card>
 

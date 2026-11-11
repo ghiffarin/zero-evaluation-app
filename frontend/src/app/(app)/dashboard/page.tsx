@@ -4,15 +4,10 @@ import * as React from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
 import { PageContainer, PageHeader, PageSection } from '@/components/layout';
+import { Stat } from '@/components/editorial';
 import { Card, CardContent, CardHeader, CardTitle, Badge, Progress } from '@/components/ui';
 import {
-  CalendarDays,
-  Clock,
-  Dumbbell,
-  Heart,
   Loader2,
-  Flame,
-  Brain,
   ChevronLeft,
   ChevronRight,
   Calendar,
@@ -31,8 +26,6 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
-  PieChart,
-  Pie,
   Cell,
   ComposedChart,
 } from 'recharts';
@@ -40,13 +33,13 @@ import {
 // Theme-aware tooltip styles
 const getTooltipStyles = (isDark: boolean) => ({
   contentStyle: {
-    backgroundColor: isDark ? 'hsl(0 0% 12%)' : '#ffffff',
-    border: `1px solid ${isDark ? 'hsl(0 0% 22%)' : '#e5e7eb'}`,
+    backgroundColor: isDark ? 'var(--popover)' : 'var(--popover)',
+    border: `1px solid ${isDark ? 'var(--foreground)' : 'var(--foreground)'}`,
     borderRadius: '8px',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
   },
-  labelStyle: { color: isDark ? '#f5f5f5' : '#111827', fontWeight: 600 },
-  itemStyle: { color: isDark ? '#d4d4d4' : '#374151' },
+  labelStyle: { color: isDark ? 'var(--popover-foreground)' : 'var(--popover-foreground)', fontWeight: 600 },
+  itemStyle: { color: isDark ? 'var(--popover-foreground)' : 'var(--popover-foreground)' },
 });
 
 // Theme-aware chart colors
@@ -262,8 +255,8 @@ export default function DashboardPage() {
   return (
     <PageContainer>
       <PageHeader
-        title={`Good ${getGreeting()}, ${user?.name?.split(' ')[0] || 'there'}!`}
-        description={formatDate(today, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        title="Overview"
+        description={`Good ${getGreeting()}, ${user?.name?.split(' ')[0] || 'there'}. ${formatDate(today, { weekday: 'long', day: 'numeric', month: 'long' })}.`}
       />
 
       {/* Summary Stats */}
@@ -372,43 +365,17 @@ export default function DashboardPage() {
           </div>
         }
       >
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-          <SummaryCard
-            icon={<Brain className="h-5 w-5" />}
-            label="Learning"
-            value={`${chartData?.summary.totalLearningHours || 0}h`}
-            color="text-blue-500"
+        <div className="grid grid-cols-2 gap-x-[var(--gutter)] gap-y-10 md:grid-cols-3">
+          <Stat value={chartData?.summary.totalLearningHours || 0} unit="h" caption="learning" />
+          <Stat value={chartData?.summary.totalWorkoutHours || 0} unit="h" caption="training" />
+          <Stat value={chartData?.summary.totalWorkHours || 0} unit="h" caption="work" />
+          <Stat
+            value={chartData?.summary.avgWellnessScore ?? '—'}
+            unit={chartData?.summary.avgWellnessScore ? '/5' : undefined}
+            caption="average wellness"
           />
-          <SummaryCard
-            icon={<Dumbbell className="h-5 w-5" />}
-            label="Workout"
-            value={`${chartData?.summary.totalWorkoutHours || 0}h`}
-            color="text-emerald-500"
-          />
-          <SummaryCard
-            icon={<Clock className="h-5 w-5" />}
-            label="Work"
-            value={`${chartData?.summary.totalWorkHours || 0}h`}
-            color="text-purple-500"
-          />
-          <SummaryCard
-            icon={<Heart className="h-5 w-5" />}
-            label="Avg Wellness"
-            value={chartData?.summary.avgWellnessScore ? `${chartData.summary.avgWellnessScore}/5` : 'N/A'}
-            color="text-rose-500"
-          />
-          <SummaryCard
-            icon={<CalendarDays className="h-5 w-5" />}
-            label="Days Tracked"
-            value={`${chartData?.summary.daysTracked || 0}`}
-            color="text-amber-500"
-          />
-          <SummaryCard
-            icon={<Flame className="h-5 w-5" />}
-            label="Streak"
-            value={`${chartData?.summary.streakDays || 0} days`}
-            color="text-orange-500"
-          />
+          <Stat value={chartData?.summary.daysTracked || 0} caption="days checked in" />
+          <Stat value={chartData?.summary.streakDays || 0} unit="d" caption="current streak" />
         </div>
       </PageSection>
 
@@ -483,17 +450,17 @@ export default function DashboardPage() {
                     }}
                   />
                   <Legend wrapperStyle={{ fontSize: '10px' }} />
-                  <Bar yAxisId="hours" dataKey="workout" name="Workout" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
-                  <Bar yAxisId="hours" dataKey="learning" name="Learning" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
-                  <Bar yAxisId="hours" dataKey="work" name="Work" stackId="a" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="hours" dataKey="workout" name="Workout" stackId="a" fill="var(--chart-3)" radius={[0, 0, 0, 0]} />
+                  <Bar yAxisId="hours" dataKey="learning" name="Learning" stackId="a" fill="var(--chart-2)" radius={[0, 0, 0, 0]} />
+                  <Bar yAxisId="hours" dataKey="work" name="Work" stackId="a" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
                   <Line
                     yAxisId="score"
                     type="monotone"
                     dataKey="dayScore"
                     name="Daily Score"
-                    stroke="#f59e0b"
+                    stroke="var(--chart-2)"
                     strokeWidth={2}
-                    dot={{ fill: '#f59e0b', r: 2.5 }}
+                    dot={{ fill: 'var(--chart-2)', r: 2.5 }}
                     connectNulls
                   />
                 </ComposedChart>
@@ -555,27 +522,27 @@ export default function DashboardPage() {
                       type="monotone"
                       dataKey="energy"
                       name="Energy"
-                      stroke="#10b981"
+                      stroke="var(--chart-3)"
                       strokeWidth={2}
-                      dot={{ fill: '#10b981', r: 3 }}
+                      dot={{ fill: 'var(--chart-3)', r: 3 }}
                       connectNulls
                     />
                     <Line
                       type="monotone"
                       dataKey="mood"
                       name="Mood"
-                      stroke="#f59e0b"
+                      stroke="var(--chart-2)"
                       strokeWidth={2}
-                      dot={{ fill: '#f59e0b', r: 3 }}
+                      dot={{ fill: 'var(--chart-2)', r: 3 }}
                       connectNulls
                     />
                     <Line
                       type="monotone"
                       dataKey="stress"
                       name="Stress"
-                      stroke="#ef4444"
+                      stroke="var(--chart-1)"
                       strokeWidth={2}
-                      dot={{ fill: '#ef4444', r: 3 }}
+                      dot={{ fill: 'var(--chart-1)', r: 3 }}
                       connectNulls
                     />
                   </LineChart>
@@ -633,11 +600,11 @@ export default function DashboardPage() {
                         }}
                       />
                       <Legend wrapperStyle={{ fontSize: '9px' }} />
-                      <Bar dataKey="ielts" name="IELTS" stackId="learning" fill="#3b82f6" radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="skills" name="Skills" stackId="learning" fill="#10b981" radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="books" name="Books" stackId="learning" fill="#f59e0b" radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="quizzes" name="Quizzes" stackId="learning" fill="#ec4899" radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="mastersPrep" name="Masters Prep" stackId="learning" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="ielts" name="IELTS" stackId="learning" fill="var(--chart-2)" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="skills" name="Skills" stackId="learning" fill="var(--chart-3)" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="books" name="Books" stackId="learning" fill="var(--chart-2)" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="quizzes" name="Quizzes" stackId="learning" fill="var(--chart-4)" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="mastersPrep" name="Masters Prep" stackId="learning" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -723,32 +690,6 @@ function getHeatmapColor(level: number): string {
     case 4: return 'bg-emerald-600 dark:bg-emerald-400';
     default: return 'bg-muted';
   }
-}
-
-function SummaryCard({
-  icon,
-  label,
-  value,
-  color,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  color: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex flex-col items-center text-center gap-2">
-          <div className={`${color}`}>{icon}</div>
-          <div>
-            <p className="text-xl font-bold">{value}</p>
-            <p className="text-xs text-muted-foreground">{label}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
 }
 
 function GoalCard({

@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ChevronLeft, ChevronRight, Calendar, TrendingUp, Clock, DollarSign, BookOpen, Activity } from 'lucide-react';
+import { PageContainer, PageHeader } from '@/components/layout';
 
 // Types
 interface MonthlyReport {
@@ -67,7 +68,7 @@ interface MonthlyReport {
   };
 }
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+const COLORS = ['var(--chart-2)', 'var(--chart-3)', 'var(--chart-2)', 'var(--chart-1)', 'var(--chart-1)', 'var(--chart-4)'];
 
 export default function ReportsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -158,12 +159,9 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Monthly Report</h1>
-        <p className="text-muted-foreground">Comprehensive overview of your activities and progress</p>
-      </div>
+    <PageContainer>
+      <PageHeader title="Reports" description="Month by month, from everything you logged." />
+      <div className="space-y-8">
 
       {/* Period Selector */}
       <Card>
@@ -568,6 +566,7 @@ export default function ReportsPage() {
           </Card>
         </div>
       </div>
-    </div>
+      </div>
+    </PageContainer>
   );
 }
